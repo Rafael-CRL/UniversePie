@@ -1,3 +1,4 @@
+import os
 import re
 import random
 import json
@@ -5,6 +6,7 @@ import asyncio
 import httpx
 from contextlib import asynccontextmanager
 from pathlib import Path
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, field_validator
@@ -12,8 +14,10 @@ import uvicorn
 from google import genai
 from google.genai import types
 
+load_dotenv()
+
 ANKI_CONNECT_URL = "http://localhost:8765"
-DECK_NAME = "English_Series"
+DECK_NAME = os.getenv("ANKI_DECK_NAME", "English_Series")
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -21,7 +25,6 @@ STATIC_DIR = Path(__file__).parent / "static"
 # A larger pool gives the AI more material to find relationships and clusters.
 POOL_MULTIPLIER = 3
 
-_card_ids_cache: list[int] = []
 http_client: httpx.AsyncClient = None
 
 try:
@@ -140,10 +143,53 @@ async def anki_invoke(action: str, params: dict = None):
 
 
 async def get_card_ids() -> list[int]:
-    global _card_ids_cache
-    if not _card_ids_cache:
-        _card_ids_cache = await anki_invoke("findCards", {"query": f'"deck:{DECK_NAME}"'})
-    return _card_ids_cache
+    return await anki_invoke("findCards", {"query": f'"deck:{DECK_NAME}"'})
+
+
+async def get_card_pool(n: int) -> list[tuple[str, str]]:
+    """Fetches a random pool of cards from the deck and parses Front/Back fields.
+
+    Raises HTTPException with an actionable message when the deck is empty
+    or when cards don't have the expected 'Front'/'Back' field names.
+    """
+    card_ids = await get_card_ids()
+    if not card_ids:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Nenhum card encontrado no deck '{DECK_NAME}'. "
+                "Verifique se o Anki está aberto e se o nome do deck está correto "
+                "(configure a variável ANKI_DECK_NAME no .env caso seu deck tenha outro nome)."
+            ),
+        )
+
+    pool_size = min(n * POOL_MULTIPLIER, len(card_ids))
+    pool_size = max(pool_size, n)  # at least n cards
+    selected_ids = random.sample(card_ids, pool_size)
+
+    cards_info = await anki_invoke("cardsInfo", {"cards": selected_ids})
+
+    parsed_cards: list[tuple[str, str]] = []
+    for info in cards_info:
+        fields = info.get("fields", {})
+        front = strip_html(fields.get("Front", {}).get("value", ""))
+        back = strip_html(fields.get("Back", {}).get("value", ""))
+        if front:
+            parsed_cards.append((front, back))
+
+    if not parsed_cards:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Nenhum card do deck '{DECK_NAME}' tem os campos esperados. "
+                "Os cards precisam ter campos chamados 'Front' e 'Back' no note type do Anki."
+            ),
+        )
+
+    if len(parsed_cards) < n:
+        raise HTTPException(status_code=500, detail="Cards válidos insuficientes no pool.")
+
+    return parsed_cards
 
 
 def build_quiz_prompt(cards: list[tuple[str, str]], n: int) -> str:
@@ -331,28 +377,7 @@ async def get_quiz_session(n: int = Query(default=5, ge=1, le=10)):
         raise HTTPException(status_code=500, detail="Cliente Gemini não inicializado. Configure GEMINI_API_KEY.")
 
     try:
-        card_ids = await get_card_ids()
-        if not card_ids:
-            raise HTTPException(status_code=404, detail=f"Nenhum card encontrado no deck '{DECK_NAME}'")
-
-        # Select a larger pool to give the AI more material to work with
-        pool_size = min(n * POOL_MULTIPLIER, len(card_ids))
-        pool_size = max(pool_size, n)  # at least n cards
-        selected_ids = random.sample(card_ids, pool_size)
-
-        # Fetch all card info in a single batch call
-        cards_info = await anki_invoke("cardsInfo", {"cards": selected_ids})
-
-        parsed_cards: list[tuple[str, str]] = []
-        for info in cards_info:
-            fields = info.get("fields", {})
-            front = strip_html(fields.get("Front", {}).get("value", ""))
-            back = strip_html(fields.get("Back", {}).get("value", ""))
-            if front:
-                parsed_cards.append((front, back))
-
-        if len(parsed_cards) < n:
-            raise HTTPException(status_code=500, detail="Cards válidos insuficientes no pool.")
+        parsed_cards = await get_card_pool(n)
 
         # Single Gemini call with the full pool
         raw_quizzes = await generate_quiz_session(parsed_cards, n)
@@ -395,26 +420,7 @@ async def get_cloze_session(n: int = Query(default=5, ge=1, le=10)):
         raise HTTPException(status_code=500, detail="Cliente Gemini não inicializado. Configure GEMINI_API_KEY.")
 
     try:
-        card_ids = await get_card_ids()
-        if not card_ids:
-            raise HTTPException(status_code=404, detail=f"Nenhum card encontrado no deck '{DECK_NAME}'")
-
-        pool_size = min(n * POOL_MULTIPLIER, len(card_ids))
-        pool_size = max(pool_size, n)
-        selected_ids = random.sample(card_ids, pool_size)
-
-        cards_info = await anki_invoke("cardsInfo", {"cards": selected_ids})
-
-        parsed_cards: list[tuple[str, str]] = []
-        for info in cards_info:
-            fields = info.get("fields", {})
-            front = strip_html(fields.get("Front", {}).get("value", ""))
-            back = strip_html(fields.get("Back", {}).get("value", ""))
-            if front:
-                parsed_cards.append((front, back))
-
-        if len(parsed_cards) < n:
-            raise HTTPException(status_code=500, detail="Cards válidos insuficientes no pool.")
+        parsed_cards = await get_card_pool(n)
 
         raw_exercises = await generate_cloze_session(parsed_cards, n)
 
@@ -443,6 +449,30 @@ async def get_cloze_session(n: int = Query(default=5, ge=1, le=10)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/status")
+async def get_status():
+    """Reports whether the app is actually usable right now, so the frontend
+    can warn the user before they try to start a session."""
+    gemini_configured = ai_client is not None
+
+    anki_connected = False
+    card_count = 0
+    try:
+        card_ids = await get_card_ids()
+        anki_connected = True
+        card_count = len(card_ids)
+    except Exception:
+        pass
+
+    return {
+        "anki_connected": anki_connected,
+        "deck_name": DECK_NAME,
+        "deck_found": card_count > 0,
+        "card_count": card_count,
+        "gemini_configured": gemini_configured,
+    }
 
 
 @app.get("/", response_class=HTMLResponse)

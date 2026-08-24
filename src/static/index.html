@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dark Side of the Moon — Alpha Quiz</title>
+    <title>UniversePie — Alpha</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -88,6 +88,16 @@
             outline: none;
         }
         .start-controls select:focus { border-color: var(--accent); }
+
+        .status-line {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+        .status-line.status-ok { color: var(--success); }
+        .status-line.status-warn { color: var(--error); }
+        .status-line.status-checking { color: var(--text-muted); }
 
         .btn {
             display: inline-flex;
@@ -496,7 +506,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Dark Side of the Moon</h1>
+            <h1>UniversePie</h1>
         </div>
 
         <!-- Start Screen -->
@@ -515,6 +525,7 @@
                 </select>
                 <button class="btn" id="start-btn">Iniciar Sessão</button>
             </div>
+            <div class="status-line status-checking" id="status-line">Verificando conexão com Anki e Gemini...</div>
         </div>
 
         <!-- Loading Screen -->
@@ -637,6 +648,7 @@
         const restartBtn = document.getElementById('restart-btn');
         const errorBox = document.getElementById('error-box');
         const loadingText = document.querySelector('.loading-text');
+        const statusLine = document.getElementById('status-line');
 
         // Quiz elements
         const quizProgressFill = document.getElementById('progress-fill');
@@ -689,6 +701,43 @@
             errorBox.textContent = msg;
             errorBox.classList.add('visible');
         }
+
+        // ===== Pre-flight Status Check =====
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                renderStatus(data);
+            } catch (err) {
+                statusLine.textContent = 'Não foi possível verificar o status do servidor.';
+                statusLine.className = 'status-line status-warn';
+                startBtn.disabled = true;
+            }
+        }
+
+        function renderStatus(data) {
+            const problems = [];
+            if (!data.anki_connected) {
+                problems.push('Anki não está respondendo. Verifique se o Anki está aberto com o AnkiConnect instalado.');
+            } else if (!data.deck_found) {
+                problems.push(`Nenhum card encontrado no deck "${data.deck_name}". Configure ANKI_DECK_NAME no .env se o seu deck tiver outro nome.`);
+            }
+            if (!data.gemini_configured) {
+                problems.push('GEMINI_API_KEY não configurada no .env.');
+            }
+
+            if (problems.length === 0) {
+                statusLine.textContent = `Pronto — ${data.card_count} cards no deck "${data.deck_name}"`;
+                statusLine.className = 'status-line status-ok';
+                startBtn.disabled = false;
+            } else {
+                statusLine.innerHTML = problems.join('<br>');
+                statusLine.className = 'status-line status-warn';
+                startBtn.disabled = true;
+            }
+        }
+
+        checkStatus();
 
         // ===== Start Session =====
         startBtn.addEventListener('click', startSession);
