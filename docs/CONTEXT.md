@@ -13,6 +13,26 @@ Público-alvo: intermediários/avançados. Vocabulário básico não é material
 
 ---
 
+## Origem do nome e filosofia
+
+"UniversePie" vem da frase de Carl Sagan: *"se você quer fazer uma torta de
+maçã do zero, primeiro precisa inventar o universo"*. A ideia central é que
+todo conhecimento — ciência, arte, linguagem — é construído em camadas, peça
+por peça, geração sobre geração, até formar algo completo. Fluência em um
+idioma segue a mesma lógica: milhares de pedacinhos de linguagem, acumulados
+e reconectados, até formarem algo íntegro e fluido. O produto existe para
+tornar essa acumulação visível e intencional — cada exercício é literalmente
+reconstruído a partir de fragmentos que o próprio usuário já estudou.
+
+Isso informa tom, não só mecânica: seriedade pedagógica não é sinônimo de
+frieza visual ou de linguagem. O produto pode ser rigoroso no conteúdo e
+ainda assim caloroso, colorido, com personalidade — o que fica de fora é
+gamificação vazia (pontuação artificial, streaks, mascotes, conquistas), não
+o calor ou a cor. Ver `skills/stitch-design-exploration.md` para como essa
+filosofia se traduz em prompts de design de UI.
+
+---
+
 ## Endpoints ativos
 
 | Rota | Método | Descrição |
