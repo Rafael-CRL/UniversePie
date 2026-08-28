@@ -1,9 +1,14 @@
 import json
 
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
 from .prompts import build_cloze_prompt, build_quiz_prompt
+
+# Loaded here (not just in config.py) so genai.Client() below sees
+# GEMINI_API_KEY regardless of which module gets imported first.
+load_dotenv()
 
 try:
     ai_client = genai.Client()

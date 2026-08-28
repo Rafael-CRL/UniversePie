@@ -70,8 +70,10 @@ async def get_card_pool(n: int) -> list[tuple[str, str]]:
             ),
         )
 
+    # Never exceeds len(card_ids): random.sample's population size is the hard
+    # ceiling. A pool smaller than n is caught by the "insufficient cards"
+    # check below instead of crashing here.
     pool_size = min(n * POOL_MULTIPLIER, len(card_ids))
-    pool_size = max(pool_size, n)  # at least n cards
     selected_ids = random.sample(card_ids, pool_size)
 
     cards_info = await anki_invoke("cardsInfo", {"cards": selected_ids})
