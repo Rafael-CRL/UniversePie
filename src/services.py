@@ -4,6 +4,7 @@ from typing import Awaitable, Callable, TypeVar
 from fastapi import HTTPException
 from pydantic import BaseModel
 
+from .ai_client import ai_client
 from .anki_client import get_card_pool
 from .models import SourceCard
 
@@ -49,6 +50,9 @@ async def run_session(
     session in the given Pydantic model. Converts any unexpected error into
     an HTTPException so routers don't have to repeat that try/except.
     """
+    if not ai_client:
+        raise HTTPException(status_code=500, detail="Cliente Gemini não inicializado. Configure GEMINI_API_KEY.")
+
     try:
         parsed_cards = await get_card_pool(n)
         raw_items = await generate_fn(parsed_cards, n)

@@ -4,6 +4,7 @@ import logging
 import pytest
 from fastapi import HTTPException
 
+from src import services
 from src.models import QuizItem, QuizSession
 from src.services import build_items, run_session
 
@@ -152,3 +153,31 @@ def test_run_session_logs_unexpected_errors_with_stacktrace(monkeypatch, caplog)
 
     assert "Falha ao gerar sessão" in caplog.text
     assert any(r.exc_info for r in caplog.records)
+
+
+def test_run_session_raises_when_ai_client_is_not_configured(monkeypatch):
+    """Regression test: this guard used to be duplicated in each router;
+    it now lives once in run_session and must still fail fast, before
+    touching Anki, when GEMINI_API_KEY isn't configured.
+    """
+    monkeypatch.setattr(services, "ai_client", None)
+
+    async def _should_not_be_called(n):
+        raise AssertionError("get_card_pool should not run when ai_client is None")
+
+    monkeypatch.setattr(services, "get_card_pool", _should_not_be_called)
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            run_session(
+                item_cls=QuizItem,
+                session_cls=QuizSession,
+                field_name="quizzes",
+                generate_fn=_fake_generate_fn,
+                n=2,
+                empty_error="Nenhum quiz gerado com sucesso.",
+            )
+        )
+
+    assert exc_info.value.status_code == 500
+    assert "GEMINI_API_KEY" in exc_info.value.detail

@@ -1,8 +1,13 @@
-def build_quiz_prompt(cards: list[tuple[str, str]], n: int) -> str:
-    """Builds the prompt that sends a pool of cards and requests n quizzes."""
+def _format_cards_block(cards: list[tuple[str, str]]) -> str:
     cards_block = ""
     for i, (front, back) in enumerate(cards):
         cards_block += f"Card {i + 1}:\n  Front: {front}\n  Back: {back}\n\n"
+    return cards_block
+
+
+def build_quiz_prompt(cards: list[tuple[str, str]], n: int) -> str:
+    """Builds the prompt that sends a pool of cards and requests n quizzes."""
+    cards_block = _format_cards_block(cards)
 
     return f"""You are a quiz designer for intermediate-to-advanced English learners whose native language is Brazilian Portuguese.
 
@@ -74,9 +79,7 @@ Generate exactly {n} quizzes. Output ONLY valid JSON, no markdown fences."""
 
 def build_cloze_prompt(cards: list[tuple[str, str]], n: int) -> str:
     """Builds the prompt for cloze (fill-in-the-blank) exercises."""
-    cards_block = ""
-    for i, (front, back) in enumerate(cards):
-        cards_block += f"Card {i + 1}:\n  Front: {front}\n  Back: {back}\n\n"
+    cards_block = _format_cards_block(cards)
 
     return f"""You are generating fill-in-the-blank exercises for an intermediate-to-advanced English learner whose native language is Brazilian Portuguese.
 
