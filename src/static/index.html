@@ -1020,7 +1020,7 @@
             if (!data.anki_connected) {
                 problems.push('Anki não está respondendo. Verifique se o Anki está aberto com o AnkiConnect instalado.');
             } else if (!data.deck_found) {
-                problems.push(`Nenhum card encontrado no deck "${data.deck_name}". Configure ANKI_DECK_NAME no .env se o seu deck tiver outro nome.`);
+                problems.push(`Nenhum card encontrado no deck "${escapeHtml(data.deck_name)}". Configure ANKI_DECK_NAME no .env se o seu deck tiver outro nome.`);
             }
             if (!data.gemini_configured) {
                 problems.push('GEMINI_API_KEY não configurada no .env.');

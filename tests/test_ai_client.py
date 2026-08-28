@@ -88,3 +88,15 @@ def test_generate_session_extracts_items_by_response_key(monkeypatch):
     result = asyncio.run(ai_client._generate_session("prompt", "quizzes"))
 
     assert result == [{"a": 1}]
+
+
+def test_generate_session_raises_friendly_error_on_malformed_json(monkeypatch):
+    """Regression test: response_mime_type='application/json' doesn't
+    guarantee well-formed JSON; a truncated/garbled response.text must not
+    surface as a raw json.JSONDecodeError.
+    """
+    fake_client = _FakeClient(_FakeModels(response=_FakeResponse(text="{not valid json")))
+    monkeypatch.setattr(ai_client, "ai_client", fake_client)
+
+    with pytest.raises(ValueError, match="formato inválido"):
+        asyncio.run(ai_client._generate_session("prompt", "quizzes"))

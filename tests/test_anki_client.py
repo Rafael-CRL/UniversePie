@@ -23,6 +23,15 @@ def test_strip_html_collapses_whitespace():
     assert strip_html("a   b\n\nc") == "a b c"
 
 
+def test_strip_html_does_not_reintroduce_tags_from_double_encoded_entities():
+    """Regression test: decoding &amp;lt;/&amp;gt; must not resurrect a real
+    tag pair after the tag-stripping regex has already run once.
+    """
+    result = strip_html("Tom &amp;lt;b&amp;gt;bold&amp;lt;/b&amp;gt; Jerry")
+    assert "<" not in result and ">" not in result
+    assert result == "Tom bold Jerry"
+
+
 def test_anki_invoke_raises_clear_error_when_http_client_not_initialized(monkeypatch):
     """Regression test: calling anki_invoke before anki_client.startup() ran
     (e.g. a test or script that skips the FastAPI lifespan) must raise an

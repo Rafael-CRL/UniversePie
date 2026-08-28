@@ -28,6 +28,10 @@ def strip_html(text: str) -> str:
     text = text.replace("&lt;", "<")
     text = text.replace("&gt;", ">")
     text = text.replace("&quot;", '"')
+    # Decoding entities above can turn double-encoded markup (e.g. a card
+    # literally containing "&amp;lt;b&amp;gt;") into real tags. Strip again
+    # to catch those before they reach the Gemini prompt or the frontend.
+    text = re.sub(r"<[^>]+>", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 

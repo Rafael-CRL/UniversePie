@@ -44,7 +44,10 @@ async def _generate_session(prompt: str, response_key: str) -> list[dict]:
             "Tente novamente."
         )
 
-    data = json.loads(response.text)
+    try:
+        data = json.loads(response.text)
+    except json.JSONDecodeError:
+        raise ValueError("O Gemini retornou uma resposta em formato inválido. Tente novamente.")
 
     if isinstance(data, dict) and response_key in data:
         return data[response_key]

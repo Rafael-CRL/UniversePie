@@ -22,11 +22,15 @@ app.include_router(quiz.router)
 app.include_router(cloze.router)
 app.include_router(status.router)
 
+# Read once at import time instead of on every request: avoids a blocking
+# disk read inside an async handler, and the content never changes at
+# runtime anyway (uvicorn --reload restarts the module on edits).
+INDEX_HTML = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
-    with open(STATIC_DIR / "index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    return INDEX_HTML
 
 
 if __name__ == "__main__":
