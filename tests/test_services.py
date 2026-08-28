@@ -1,5 +1,11 @@
-from src.models import QuizItem
-from src.services import build_items
+import asyncio
+import logging
+
+import pytest
+from fastapi import HTTPException
+
+from src.models import QuizItem, QuizSession
+from src.services import build_items, run_session
 
 PARSED_CARDS = [
     ("settle into", "to become comfortable in a new situation"),
@@ -39,3 +45,84 @@ def test_build_items_skips_invalid_items_without_failing_the_batch():
     items = build_items(QuizItem, [invalid, valid], PARSED_CARDS)
 
     assert len(items) == 1
+
+
+def test_build_items_logs_a_warning_for_each_skipped_item(caplog):
+    invalid = {**RAW_QUIZ, "quiz_type": "not_a_type"}
+
+    with caplog.at_level(logging.WARNING, logger="src.services"):
+        build_items(QuizItem, [invalid], PARSED_CARDS)
+
+    assert "QuizItem" in caplog.text
+
+
+async def _fake_get_card_pool(n):
+    return PARSED_CARDS
+
+
+async def _fake_generate_fn(cards, n):
+    return [dict(RAW_QUIZ) for _ in range(n)]
+
+
+async def _fake_generate_fn_empty(cards, n):
+    return []
+
+
+def test_run_session_builds_the_session_on_success(monkeypatch):
+    monkeypatch.setattr("src.services.get_card_pool", _fake_get_card_pool)
+
+    session = asyncio.run(
+        run_session(
+            item_cls=QuizItem,
+            session_cls=QuizSession,
+            field_name="quizzes",
+            generate_fn=_fake_generate_fn,
+            n=2,
+            empty_error="Nenhum quiz gerado com sucesso.",
+        )
+    )
+
+    assert isinstance(session, QuizSession)
+    assert session.total == 2
+    assert len(session.quizzes) == 2
+
+
+def test_run_session_raises_http_exception_when_nothing_was_generated(monkeypatch):
+    monkeypatch.setattr("src.services.get_card_pool", _fake_get_card_pool)
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            run_session(
+                item_cls=QuizItem,
+                session_cls=QuizSession,
+                field_name="quizzes",
+                generate_fn=_fake_generate_fn_empty,
+                n=2,
+                empty_error="Nenhum quiz gerado com sucesso.",
+            )
+        )
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Nenhum quiz gerado com sucesso."
+
+
+def test_run_session_wraps_unexpected_errors_as_500(monkeypatch):
+    monkeypatch.setattr("src.services.get_card_pool", _fake_get_card_pool)
+
+    async def _boom(cards, n):
+        raise ValueError("Gemini explodiu")
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            run_session(
+                item_cls=QuizItem,
+                session_cls=QuizSession,
+                field_name="quizzes",
+                generate_fn=_boom,
+                n=2,
+                empty_error="Nenhum quiz gerado com sucesso.",
+            )
+        )
+
+    assert exc_info.value.status_code == 500
+    assert "Gemini explodiu" in exc_info.value.detail

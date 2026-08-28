@@ -23,6 +23,17 @@ def test_strip_html_collapses_whitespace():
     assert strip_html("a   b\n\nc") == "a b c"
 
 
+def test_anki_invoke_raises_clear_error_when_http_client_not_initialized(monkeypatch):
+    """Regression test: calling anki_invoke before anki_client.startup() ran
+    (e.g. a test or script that skips the FastAPI lifespan) must raise an
+    actionable RuntimeError, not an opaque AttributeError on NoneType.
+    """
+    monkeypatch.setattr(anki_client, "http_client", None)
+
+    with pytest.raises(RuntimeError, match="http_client não inicializado"):
+        asyncio.run(anki_client.anki_invoke("findCards"))
+
+
 def _fake_cards_info(params):
     return [
         {

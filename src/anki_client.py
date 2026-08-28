@@ -33,6 +33,11 @@ def strip_html(text: str) -> str:
 
 
 async def anki_invoke(action: str, params: dict = None):
+    if http_client is None:
+        raise RuntimeError(
+            "http_client não inicializado. anki_client.startup() precisa rodar antes "
+            "(isso normalmente acontece via o lifespan do FastAPI em main.py)."
+        )
     payload = {"action": action, "version": 6}
     if params:
         payload["params"] = params
