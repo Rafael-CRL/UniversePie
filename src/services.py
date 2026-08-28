@@ -62,4 +62,5 @@ async def run_session(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error("Falha ao gerar sessão (%s)", generate_fn.__name__, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

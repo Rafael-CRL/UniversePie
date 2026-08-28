@@ -1,5 +1,6 @@
 import json
 
+import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -16,18 +17,32 @@ except Exception:
     ai_client = None
     print("Aviso: Falha ao inicializar o cliente genai. Verifique se GEMINI_API_KEY está configurada.")
 
+GEMINI_TIMEOUT_MS = 60_000
+
 
 async def _generate_session(prompt: str, response_key: str) -> list[dict]:
     """Sends a prompt to Gemini and extracts the list of items from its JSON
     response. Handles both {"<response_key>": [...]} and direct [...] formats.
     """
-    response = await ai_client.aio.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-        ),
-    )
+    try:
+        response = await ai_client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS),
+            ),
+        )
+    except httpx.TimeoutException:
+        raise ValueError("O Gemini demorou demais para responder. Tente novamente.")
+
+    if response.text is None:
+        # Can happen when the safety filters block the response instead of
+        # returning content.
+        raise ValueError(
+            "O Gemini não retornou conteúdo (possivelmente bloqueado pelos filtros de segurança). "
+            "Tente novamente."
+        )
 
     data = json.loads(response.text)
 

@@ -126,3 +126,29 @@ def test_run_session_wraps_unexpected_errors_as_500(monkeypatch):
 
     assert exc_info.value.status_code == 500
     assert "Gemini explodiu" in exc_info.value.detail
+
+
+def test_run_session_logs_unexpected_errors_with_stacktrace(monkeypatch, caplog):
+    """Regression test: an unexpected failure must leave a server-side trace,
+    not just the HTTPException shown to the user.
+    """
+    monkeypatch.setattr("src.services.get_card_pool", _fake_get_card_pool)
+
+    async def _boom(cards, n):
+        raise ValueError("Gemini explodiu")
+
+    with caplog.at_level(logging.ERROR, logger="src.services"):
+        with pytest.raises(HTTPException):
+            asyncio.run(
+                run_session(
+                    item_cls=QuizItem,
+                    session_cls=QuizSession,
+                    field_name="quizzes",
+                    generate_fn=_boom,
+                    n=2,
+                    empty_error="Nenhum quiz gerado com sucesso.",
+                )
+            )
+
+    assert "Falha ao gerar sessão" in caplog.text
+    assert any(r.exc_info for r in caplog.records)
