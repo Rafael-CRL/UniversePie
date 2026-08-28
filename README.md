@@ -48,7 +48,16 @@ Acesse `http://localhost:14567`. A tela inicial mostra se o Anki, o deck e a `GE
 ## Estrutura
 
 ```
-src/          código fonte (main.py, static/)
+src/
+  main.py           cria o app FastAPI, monta os routers, serve o frontend
+  config.py         variáveis de ambiente e constantes
+  models.py         schemas Pydantic (Quiz*, Cloze*, SourceCard)
+  anki_client.py    integração com AnkiConnect (busca e parsing de cards)
+  ai_client.py      integração com o Gemini (chamadas de geração)
+  prompts.py        prompts enviados ao Gemini
+  services.py       mapeamento de source_cards + validação dos itens gerados
+  routers/          endpoints (quiz, cloze, status)
+  static/           frontend (HTML/JS/CSS puro)
 tests/        testes
 docs/         contexto e regras para agentes de IA
 skills/       procedimentos reutilizáveis para tarefas recorrentes
