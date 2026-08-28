@@ -36,6 +36,14 @@ uvicorn src.main:app --reload --port 14567
 
 Acesse `http://localhost:14567`. A tela inicial mostra se o Anki, o deck e a `GEMINI_API_KEY` estão configurados corretamente antes de você iniciar uma sessão.
 
+## Testes
+
+```bash
+pytest
+```
+
+Cobre as partes que não dependem de Anki nem Gemini rodando: sanitização de HTML, validadores dos modelos Pydantic e o mapeamento `used_cards` → `source_cards`.
+
 ## Endpoints
 
 | Rota | Método | Descrição |
