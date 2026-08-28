@@ -933,6 +933,31 @@
         const clozeNav = document.getElementById('cloze-nav');
         const clozeNextBtn = document.getElementById('cloze-next-btn');
 
+        // ===== HTML Escaping =====
+        // Quiz/cloze content comes from the Gemini response and the user's own
+        // typed answer. Most of it is rendered via textContent (auto-safe), but
+        // a few spots build HTML strings (badges, source-card blocks, feedback
+        // messages) that mix literal markup with this dynamic text — escape the
+        // dynamic parts there so they can never be interpreted as tags.
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderSourceCardsHtml(sourceCards) {
+            let html = '';
+            sourceCards.forEach((sc, i) => {
+                if (sourceCards.length > 1) html += `<div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 4px;">Card ${i + 1}</div>`;
+                html += `<strong>Front:</strong> ${escapeHtml(sc.front)}<br><strong>Back:</strong> ${escapeHtml(sc.back)}`;
+                if (i < sourceCards.length - 1) html += '<hr style="border: none; border-top: 1px solid var(--border); margin: 10px 0;">';
+            });
+            return html;
+        }
+
         // ===== Mode Selector =====
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1061,7 +1086,7 @@
             quiz.options.forEach((opt, idx) => {
                 const btn = document.createElement('button');
                 btn.className = 'option';
-                btn.innerHTML = `<span class="key-hint">${idx + 1}</span><span>${opt}</span>`;
+                btn.innerHTML = `<span class="key-hint">${idx + 1}</span><span>${escapeHtml(opt)}</span>`;
                 btn.addEventListener('click', () => selectOption(idx));
                 optionsEl.appendChild(btn);
             });
@@ -1098,14 +1123,7 @@
             explanationEl.textContent = quiz.explanation;
             explanationEl.classList.add('visible');
 
-            const sourceCards = quiz.source_cards || [];
-            let cardsHtml = '';
-            sourceCards.forEach((sc, i) => {
-                if (sourceCards.length > 1) cardsHtml += `<div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 4px;">Card ${i + 1}</div>`;
-                cardsHtml += `<strong>Front:</strong> ${sc.front}<br><strong>Back:</strong> ${sc.back}`;
-                if (i < sourceCards.length - 1) cardsHtml += '<hr style="border: none; border-top: 1px solid var(--border); margin: 10px 0;">';
-            });
-            cardContent.innerHTML = cardsHtml;
+            cardContent.innerHTML = renderSourceCardsHtml(quiz.source_cards || []);
             originalCard.style.display = 'block';
 
             quizNav.classList.add('visible');
@@ -1134,7 +1152,7 @@
             clozeCommonality.className = 'commonality-tag ' + ex.commonality;
 
             // Render sentence with styled blank
-            const sentenceHtml = ex.sentence.replace('_____', '<span class="cloze-blank">?????</span>');
+            const sentenceHtml = escapeHtml(ex.sentence).replace('_____', '<span class="cloze-blank">?????</span>');
             clozeSentence.innerHTML = sentenceHtml;
 
             // Reset input
@@ -1174,15 +1192,15 @@
 
             if (normalizedAnswer === normalizedTarget) {
                 status = 'correct';
-                feedbackHtml = `<strong>Correto!</strong> A expressão-alvo é: <strong>${ex.target_expression}</strong>`;
+                feedbackHtml = `<strong>Correto!</strong> A expressão-alvo é: <strong>${escapeHtml(ex.target_expression)}</strong>`;
             } else if (normalizedAlts.includes(normalizedAnswer)) {
                 status = 'alternative';
-                feedbackHtml = `<strong>Alternativa válida.</strong> Sua resposta "${userAnswer}" funciona neste contexto.<br>A expressão-alvo era: <strong>${ex.target_expression}</strong>`;
+                feedbackHtml = `<strong>Alternativa válida.</strong> Sua resposta "${escapeHtml(userAnswer)}" funciona neste contexto.<br>A expressão-alvo era: <strong>${escapeHtml(ex.target_expression)}</strong>`;
             } else {
                 status = 'incorrect';
-                feedbackHtml = `<strong>Incorreto.</strong> Sua resposta: "${userAnswer}"<br>Expressão-alvo: <strong>${ex.target_expression}</strong>`;
+                feedbackHtml = `<strong>Incorreto.</strong> Sua resposta: "${escapeHtml(userAnswer)}"<br>Expressão-alvo: <strong>${escapeHtml(ex.target_expression)}</strong>`;
                 if (ex.acceptable_alternatives && ex.acceptable_alternatives.length > 0) {
-                    feedbackHtml += `<br>Alternativas aceitas: ${ex.acceptable_alternatives.join(', ')}`;
+                    feedbackHtml += `<br>Alternativas aceitas: ${ex.acceptable_alternatives.map(escapeHtml).join(', ')}`;
                 }
             }
 
@@ -1218,14 +1236,7 @@
             }
 
             // Show source cards
-            const sourceCards = ex.source_cards || [];
-            let cardsHtml = '';
-            sourceCards.forEach((sc, i) => {
-                if (sourceCards.length > 1) cardsHtml += `<div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 4px;">Card ${i + 1}</div>`;
-                cardsHtml += `<strong>Front:</strong> ${sc.front}<br><strong>Back:</strong> ${sc.back}`;
-                if (i < sourceCards.length - 1) cardsHtml += '<hr style="border: none; border-top: 1px solid var(--border); margin: 10px 0;">';
-            });
-            clozeCardContent.innerHTML = cardsHtml;
+            clozeCardContent.innerHTML = renderSourceCardsHtml(ex.source_cards || []);
             clozeOriginalCard.style.display = 'block';
 
             // Disable input
@@ -1277,11 +1288,11 @@
             if (missed.length > 0) {
                 missedSection.innerHTML = '<h3>Conceitos errados</h3>';
                 missed.forEach(r => {
-                    let detail = r.explanation;
-                    if (r.userAnswer) detail = `Sua resposta: "${r.userAnswer}" — Alvo: "${r.targetAnswer}"<br>${detail}`;
+                    let detail = escapeHtml(r.explanation);
+                    if (r.userAnswer) detail = `Sua resposta: "${escapeHtml(r.userAnswer)}" — Alvo: "${escapeHtml(r.targetAnswer)}"<br>${detail}`;
                     missedSection.innerHTML += `
                         <div class="summary-item missed">
-                            <div class="item-concept">${r.concept}</div>
+                            <div class="item-concept">${escapeHtml(r.concept)}</div>
                             <div class="item-explanation">${detail}</div>
                         </div>`;
                 });
@@ -1293,7 +1304,7 @@
                 hits.forEach(r => {
                     details.innerHTML += `
                         <div class="summary-item hit">
-                            <div class="item-concept">${r.concept}</div>
+                            <div class="item-concept">${escapeHtml(r.concept)}</div>
                         </div>`;
                 });
                 hitSection.appendChild(details);
