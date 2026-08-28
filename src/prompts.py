@@ -114,9 +114,9 @@ Your job is to generate exactly {n} cloze exercises. Each exercise presents a se
 ## Output Format
 
 Return a JSON object:
-{{{{
+{{
   "exercises": [
-    {{{{
+    {{
       "concept": "Brief label of the concept",
       "sentence": "She decided to _____ the project after months of frustration.",
       "target_expression": "give up on",
@@ -126,9 +126,9 @@ Return a JSON object:
       "context_note": "",
       "explanation": "'Give up on' means to stop trying to achieve or improve something...",
       "used_cards": [2, 5]
-    }}}}
+    }}
   ]
-}}}}
+}}
 
 ## Card Pool
 
