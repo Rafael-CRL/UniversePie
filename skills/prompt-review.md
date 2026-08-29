@@ -30,6 +30,26 @@ Leia `docs/AI_RULES.md` antes de executar esta skill.
 
 ---
 
+## Medir antes e depois
+
+A checklist acima é leitura do prompt; o auditor mede o resultado dele.
+
+```bash
+python scripts/audit_exercises.py --tag antes    # com o prompt atual
+# ... altera o prompt, reinicia o servidor ...
+python scripts/audit_exercises.py --tag depois
+```
+
+Comparar `docs/audit/antes.json` com `docs/audit/depois.json`: `summary.clean_rate` deve subir e nenhuma checagem de severidade ERRO deve aparecer onde não aparecia antes. Um run com ERRO faz o script sair com código != 0 — não aceitar a mudança de prompt nesse estado.
+
+Rodar o mesmo pool em dois provedores (`--cards` fixo, `--provider` diferente) separa
+"o prompt está ruim" de "o modelo é fraco": se um modelo forte também tropeça, o problema
+é do prompt. Ollama não tem rate limit, então serve para iterar sem gastar cota.
+
+Sinais que a checklist não pega e o auditor pega: viés de posição da resposta, resposta sempre sendo a opção mais longa, estratégias de quiz que o Gemini deixou de usar, exercícios sem card-fonte, `context_note` faltando em expressão não-`common`.
+
+---
+
 ## Red flags — se encontrar algum, corrigir antes de prosseguir
 
 - Prompt que instrui a gerar nuances para toda expressão indiscriminadamente
