@@ -40,6 +40,10 @@ class Provider(ABC):
     def __init__(self, model: str | None = None, timeout_s: float | None = None):
         self.model = (model or self.default_model).strip()
         self.timeout_s = timeout_s or self.default_timeout_s
+        # Consumo da última chamada, normalizado entre provedores. Sem isso não
+        # dá para comparar eficiência: latência sozinha não distingue um modelo
+        # que gastou 800 tokens de outro que gastou 3.000 no mesmo trabalho.
+        self.last_usage: dict | None = None
 
     # -- identidade e configuração ----------------------------------------
 
@@ -62,6 +66,16 @@ class Provider(ABC):
     @abstractmethod
     async def generate(self, prompt: str) -> str:
         """Devolve o texto cru da resposta. A extração do JSON é do ai_client."""
+
+    def _record_usage(self, prompt_tokens=None, completion_tokens=None, total_tokens=None, **extra) -> None:
+        if total_tokens is None and None not in (prompt_tokens, completion_tokens):
+            total_tokens = prompt_tokens + completion_tokens
+        self.last_usage = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            **extra,
+        }
 
     async def _post(self, url: str, body: dict, headers: dict | None = None) -> httpx.Response:
         try:
@@ -173,6 +187,14 @@ class GeminiProvider(Provider):
         except Exception as exc:
             raise ProviderError(f"{self.label}: {exc}") from exc
 
+        meta = getattr(response, "usage_metadata", None)
+        if meta is not None:
+            self._record_usage(
+                prompt_tokens=getattr(meta, "prompt_token_count", None),
+                completion_tokens=getattr(meta, "candidates_token_count", None),
+                total_tokens=getattr(meta, "total_token_count", None),
+            )
+
         if response.text is None:
             # Acontece quando os filtros de segurança bloqueiam em vez de responder.
             raise ProviderError(
@@ -196,9 +218,10 @@ class OpenAICompatProvider(Provider):
     # modo JSON devolve 400 descartando tudo ("max completion tokens reached
     # before generating a valid document"); com 8192, o valor reservado conta
     # contra o limite de tokens por minuto e a requisição leva 413 antes de
-    # sair ("Limit 8000, Requested 9721"). Uma sessão de 5 gasta ~1.100 tokens
-    # de saída, então 4096 dá folga de três vezes sem estourar cota de tier
-    # gratuito.
+    # sair ("Limit 8000, Requested 9721"). Medido no gpt-oss-20b, uma sessão de
+    # 5 exercícios gasta ~2.200 tokens de saída — os modelos gpt-oss emitem
+    # tokens de raciocínio que contam aqui e não aparecem no conteúdo — então
+    # 4096 dá folga de 1,8x e ainda cabe num teto de 8.000 por minuto.
     max_tokens = 4096
 
     async def generate(self, prompt: str) -> str:
@@ -230,6 +253,14 @@ class OpenAICompatProvider(Provider):
 
         response = await self._post(f"{self.base_url.rstrip('/')}/chat/completions", body, headers)
         payload = response.json()
+
+        usage = payload.get("usage") or {}
+        if usage:
+            self._record_usage(
+                prompt_tokens=usage.get("prompt_tokens"),
+                completion_tokens=usage.get("completion_tokens"),
+                total_tokens=usage.get("total_tokens"),
+            )
 
         choices = payload.get("choices") or []
         if not choices:
@@ -353,7 +384,14 @@ class OllamaProvider(Provider):
             body["think"] = think
 
         response = await self._post(f"{self.base_url.rstrip('/')}/api/chat", body)
-        return response.json().get("message", {}).get("content") or ""
+        data = response.json()
+        self._record_usage(
+            prompt_tokens=data.get("prompt_eval_count"),
+            completion_tokens=data.get("eval_count"),
+            # Nanosegundos no protocolo do Ollama; segundos são mais úteis aqui.
+            generation_s=round((data.get("eval_duration") or 0) / 1e9, 2) or None,
+        )
+        return data.get("message", {}).get("content") or ""
 
     def connect_error_message(self) -> str:
         return f"Ollama não respondeu em {self.base_url}. Rode 'ollama serve' e confira 'ollama list'."
@@ -386,7 +424,14 @@ class AnthropicProvider(Provider):
             "Content-Type": "application/json",
         }
         response = await self._post(f"{self.base_url}/messages", body, headers)
-        blocks = response.json().get("content") or []
+        data = response.json()
+        usage = data.get("usage") or {}
+        if usage:
+            self._record_usage(
+                prompt_tokens=usage.get("input_tokens"),
+                completion_tokens=usage.get("output_tokens"),
+            )
+        blocks = data.get("content") or []
         text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
         return "{" + text
 

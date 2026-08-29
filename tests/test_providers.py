@@ -109,6 +109,60 @@ def test_error_message_surfaces_the_real_cause_not_the_generic_one(capture):
         asyncio.run(GroqProvider().generate("prompt"))
 
 
+def test_records_token_usage_from_openai_compatible_providers(capture):
+    """Latência sozinha não distingue um modelo que gastou 800 tokens de outro
+    que gastou 3.000 no mesmo trabalho."""
+    respond(
+        capture,
+        httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "{}"}}],
+                "usage": {"prompt_tokens": 1500, "completion_tokens": 1100, "total_tokens": 2600},
+            },
+        ),
+    )
+
+    provider = GroqProvider()
+    asyncio.run(provider.generate("prompt"))
+
+    assert provider.last_usage["prompt_tokens"] == 1500
+    assert provider.last_usage["completion_tokens"] == 1100
+    assert provider.last_usage["total_tokens"] == 2600
+
+
+def test_records_token_usage_from_ollama_with_its_own_field_names(capture):
+    respond(
+        capture,
+        httpx.Response(
+            200,
+            json={
+                "message": {"content": "{}"},
+                "prompt_eval_count": 1400,
+                "eval_count": 1050,
+                "eval_duration": 22_500_000_000,
+            },
+        ),
+    )
+
+    provider = OllamaProvider()
+    asyncio.run(provider.generate("prompt"))
+
+    assert provider.last_usage["prompt_tokens"] == 1400
+    assert provider.last_usage["completion_tokens"] == 1050
+    assert provider.last_usage["total_tokens"] == 2450  # somado, o Ollama não manda
+    assert provider.last_usage["generation_s"] == 22.5
+
+
+def test_usage_stays_none_when_the_provider_reports_nothing(capture):
+    respond(capture, httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]}))
+
+    provider = GroqProvider()
+    asyncio.run(provider.generate("prompt"))
+
+    assert provider.last_usage is None
+
+
 def test_rate_limit_message_says_when_the_quota_comes_back(capture):
     """Sem os headers a mensagem só diz 'tente mais tarde' — inútil para
     decidir entre esperar e trocar de provedor."""
