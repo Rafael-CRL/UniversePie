@@ -5,6 +5,7 @@ Ferramenta web local de aprendizado de inglês via sentence mining. A IA opera c
 
 **Leia antes de qualquer tarefa que envolva prompts ou novos endpoints:** `docs/CONTEXT.md`
 **Leia antes de qualquer tarefa que envolva geração de conteúdo pela IA:** `docs/AI_RULES.md`
+**Leia antes de mexer nos prompts ou na auditoria:** `docs/SESSAO-2026-08-29-auditoria.md` — o que já foi medido, concluído e descartado, com os números.
 
 ---
 
