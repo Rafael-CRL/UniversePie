@@ -56,8 +56,27 @@ curl http://localhost:8765 -X POST -d '{"action":"version","version":6}'
 
 ## O que o agent não faz
 - Force-push
-- Chamadas reais à API do Gemini fora do servidor rodando localmente
 - Modificar o deck do Anki
+
+## Todos os provedores estão em tier gratuito
+
+Rodar medições contra as APIs reais faz parte do trabalho e não precisa de
+autorização — inclusive no Gemini. O que muda é a leitura das falhas: cota
+esgotada é condição normal de operação, não defeito do código.
+
+Falhas já observadas e o que significam:
+
+| Sintoma | Causa |
+|---|---|
+| Groq HTTP 429 | limite de requisições por minuto |
+| Groq HTTP 413 | limite de tokens por minuto — o `max_tokens` reservado conta no total |
+| Groq HTTP 400 "Failed to generate JSON" | saída truncada pelo teto de tokens; a causa real vem em `failed_generation` |
+| OpenRouter 429 upstream | pool gratuito compartilhado entre todos os usuários; sai como erro no corpo, às vezes com HTTP 200 |
+| Gemini HTTP 503 UNAVAILABLE | alta demanda momentânea no modelo |
+
+Antes de investigar como bug, considerar a cota. Antes de concluir que um
+provedor não funciona, tentar de novo — o auditor já tem `--retries` com
+backoff exatamente por isso.
 
 ---
 
