@@ -89,6 +89,25 @@ python scripts/audit_exercises.py --from-raw docs/audit/qwen.raw.json   # sem ga
 
 `docs/audit/pool-exemplo.json` é um pool de 15 cards no formato esperado — dá para auditar qualquer provedor sem o Anki aberto.
 
+### Dados que cada run deixa
+
+| Arquivo | Conteúdo | Versionado |
+|---|---|---|
+| `history.jsonl` | uma linha por run: provedor, modelo, resumo, estatísticas, consumo de tokens, latência | sim |
+| `<tag>.json` | findings completos, estatísticas e consumo do run | só as linhas de base |
+| `<tag>.md` | relatório para leitura | não |
+| `<tag>.raw.json` | respostas cruas da API e o pool usado em cada rodada | não |
+
+O consumo de tokens é capturado de todos os provedores (`usage` nos compatíveis com OpenAI e no Gemini, `prompt_eval_count`/`eval_count` no Ollama) e agregado como `tokens_per_item` e `seconds_per_item`. Sem isso, comparar eficiência entre modelos seria só olhar latência, que não distingue um modelo que gastou 800 tokens de outro que gastou 3.000 no mesmo trabalho.
+
+### Revisão humana cega
+
+```bash
+python scripts/audit_exercises.py --provider groq --sample 20 --tag revisao
+```
+
+Exporta 20 exercícios embaralhados de todos os provedores do run, sem indicar quem gerou cada um, e grava o gabarito em arquivo separado. Existe porque o auditor mede conformidade com regras, não valor pedagógico, e as duas coisas divergem — ver o item 4 de [`docs/DEBITO_TECNICO.md`](docs/DEBITO_TECNICO.md).
+
 Cada run escreve três arquivos em `docs/audit/`: `.md` (leitura, com a resposta correta marcada), `.json` (findings e estatísticas, para comparar versões de prompt) e `.raw.json` (respostas cruas da API). O script sai com código != 0 quando encontra findings de severidade ERRO — use como portão antes de aceitar uma mudança de prompt.
 
 ## Endpoints

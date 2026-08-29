@@ -76,13 +76,38 @@ confusões reais e de interferência do português. Nenhuma verificação existe
 e vazias. Nada além disso. É a única regra explícita do `AI_RULES.md` que
 governa a qualidade central do quiz e não tem nenhuma cobertura.
 
-**Impacto.** Um quiz com três distratores absurdos passa por "100% limpo" na
-auditoria. A métrica de qualidade tem um buraco no meio.
+**Impacto, medido.** Na linha de base de 2026-08-29 a métrica inverteu a
+ordenação real. O `openai/gpt-oss-20b` tirou a melhor nota (93% limpos)
+produzindo, num exercício de `interference`, as alternativas "out of your
+depth" / "out of depth" / "out of your depthness" / "out of depthness" —
+palavras inventadas, nenhuma interferência de português, exatamente o que o
+`AI_RULES.md` proíbe. O Gemini tirou 73% e produziu a única armadilha de L1
+legítima da rodada ("contar sua mãe fora" para *tell off*), penalizado por
+citar "Card 2" numa explicação, defeito cosmético que o aluno vê depois de já
+ter respondido.
 
-**Custo.** Alto, e sem solução determinística conhecida. As opções são um LLM
-atuando como juiz — o que é diferente de IA avaliando a resposta do aluno e
-portanto não conflita com a decisão consolidada nº 2 do `CLAUDE.md` — ou
-revisão manual por amostra.
+**Duas heurísticas determinísticas foram testadas e rejeitadas** contra os 62
+quizzes da linha de base:
+
+1. *Palavra inexistente na wordlist do sistema.* Pegou `depthness`, mas com 4
+   falsos positivos em 5: `blotto` (gíria real, do próprio deck do usuário),
+   `underwhelmed` e `wellbeing` (palavras reais fora do dicionário) e `'em`
+   (contração). Precisão de 20%.
+2. *Distratores parecidos demais com a resposta* (similaridade de superfície).
+   Não separa: "on the hook" / "off the hook" / "in the hook" tem similaridade
+   0,91 e é um exercício **bom** — discriminação legítima, que é justamente o
+   que o prompt pede. "depthness" pontua 0,89. A mediana da amostra é 0,51.
+
+A conclusão dos dois testes é que plausibilidade de distrator não é detectável
+por forma superficial, porque a diferença entre um bom distrator e um inventado
+é semântica.
+
+**Custo.** Alto. Sobram duas saídas, não excludentes: um LLM atuando como juiz
+— o que é diferente de IA avaliando a resposta do aluno e portanto não conflita
+com a decisão consolidada nº 2 do `CLAUDE.md` — ou revisão humana por amostra
+cega. O auditor já exporta a amostra (`--sample N`), com o gabarito de qual
+modelo gerou cada exercício em arquivo separado. A revisão humana vem primeiro:
+é ela que calibra qualquer juiz automático depois.
 
 ---
 
