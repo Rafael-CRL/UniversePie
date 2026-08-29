@@ -155,15 +155,16 @@ def test_run_session_logs_unexpected_errors_with_stacktrace(monkeypatch, caplog)
     assert any(r.exc_info for r in caplog.records)
 
 
-def test_run_session_raises_when_ai_client_is_not_configured(monkeypatch):
+def test_run_session_raises_when_no_provider_is_configured(monkeypatch):
     """Regression test: this guard used to be duplicated in each router;
     it now lives once in run_session and must still fail fast, before
-    touching Anki, when GEMINI_API_KEY isn't configured.
+    touching Anki, when the selected provider isn't usable — and the reason
+    the provider gave has to reach the user.
     """
-    monkeypatch.setattr(services, "ai_client", None)
+    monkeypatch.setattr(services, "provider_ready", lambda: (False, "Defina GROQ_API_KEY no .env."))
 
     async def _should_not_be_called(n):
-        raise AssertionError("get_card_pool should not run when ai_client is None")
+        raise AssertionError("get_card_pool não deve rodar sem provedor configurado")
 
     monkeypatch.setattr(services, "get_card_pool", _should_not_be_called)
 
@@ -180,4 +181,4 @@ def test_run_session_raises_when_ai_client_is_not_configured(monkeypatch):
         )
 
     assert exc_info.value.status_code == 500
-    assert "GEMINI_API_KEY" in exc_info.value.detail
+    assert exc_info.value.detail == "Defina GROQ_API_KEY no .env."

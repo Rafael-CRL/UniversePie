@@ -1,66 +1,87 @@
 import json
+import re
 
-import httpx
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
 
 from .prompts import build_cloze_prompt, build_quiz_prompt
+from .providers import Provider, ProviderError, get_provider
 
-# Loaded here (not just in config.py) so genai.Client() below sees
-# GEMINI_API_KEY regardless of which module gets imported first.
+# Carregado aqui (e não só no config.py) para que a escolha de provedor e as
+# chaves existam independentemente de qual módulo for importado primeiro.
 load_dotenv()
 
-try:
-    ai_client = genai.Client()
-except Exception:
-    ai_client = None
-    print("Aviso: Falha ao inicializar o cliente genai. Verifique se GEMINI_API_KEY está configurada.")
-
-GEMINI_TIMEOUT_MS = 60_000
+_FENCES = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE)
 
 
-async def _generate_session(prompt: str, response_key: str) -> list[dict]:
-    """Sends a prompt to Gemini and extracts the list of items from its JSON
-    response. Handles both {"<response_key>": [...]} and direct [...] formats.
+def provider_ready() -> tuple[bool, str]:
+    """(dá para gerar agora?, o que fazer se não der)."""
+    try:
+        return get_provider().ready()
+    except ProviderError as exc:
+        return False, str(exc)
+
+
+def parse_json(text: str) -> object:
+    """Converte a resposta do modelo em JSON, tolerando o que modelos menores
+    fazem: cercar em ```json, narrar antes ("Here is the JSON:") ou depois.
     """
+    cleaned = _FENCES.sub("", text or "").strip()
     try:
-        response = await ai_client.aio.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS),
-            ),
-        )
-    except httpx.TimeoutException:
-        raise ValueError("O Gemini demorou demais para responder. Tente novamente.")
-
-    if response.text is None:
-        # Can happen when the safety filters block the response instead of
-        # returning content.
-        raise ValueError(
-            "O Gemini não retornou conteúdo (possivelmente bloqueado pelos filtros de segurança). "
-            "Tente novamente."
-        )
-
-    try:
-        data = json.loads(response.text)
+        return json.loads(cleaned)
     except json.JSONDecodeError:
-        raise ValueError("O Gemini retornou uma resposta em formato inválido. Tente novamente.")
+        pass
 
-    if isinstance(data, dict) and response_key in data:
-        return data[response_key]
+    match = re.search(r"[\{\[].*[\}\]]", cleaned, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    raise ProviderError("O modelo retornou uma resposta em formato inválido. Tente novamente.")
+
+
+def extract_items(data: object, response_key: str) -> list[dict]:
+    """Encontra a lista de exercícios na resposta.
+
+    O contrato pede {"quizzes": [...]}, mas modelos menores trocam o nome da
+    chave ou devolvem um item solto — recuperar isso aqui é mais barato do
+    que descartar a sessão inteira.
+    """
     if isinstance(data, list):
         return data
-    raise ValueError(f"Formato inesperado do Gemini: {type(data)}")
+
+    if isinstance(data, dict):
+        if isinstance(data.get(response_key), list):
+            return data[response_key]
+
+        # Antes da heurística de lista: um item solto tem listas dentro dele
+        # ("options", "acceptable_alternatives") que não são a lista buscada.
+        if any(key in data for key in ("question", "sentence")):
+            return [data]
+
+        lists = [v for v in data.values() if isinstance(v, list) and v and all(isinstance(i, dict) for i in v)]
+        if len(lists) == 1:
+            return lists[0]
+
+    raise ProviderError(f"Formato inesperado do modelo: {type(data).__name__}.")
 
 
-async def generate_quiz_session(cards: list[tuple[str, str]], n: int) -> list[dict]:
-    """Sends the full card pool to Gemini in a single request and gets n quizzes back."""
-    return await _generate_session(build_quiz_prompt(cards, n), "quizzes")
+async def _generate_session(prompt: str, response_key: str, provider: Provider | None = None) -> list[dict]:
+    provider = provider or get_provider()
+    text = await provider.generate(prompt)
+    return extract_items(parse_json(text), response_key)
 
 
-async def generate_cloze_session(cards: list[tuple[str, str]], n: int) -> list[dict]:
-    """Sends the full card pool to Gemini and gets n cloze exercises back."""
-    return await _generate_session(build_cloze_prompt(cards, n), "exercises")
+async def generate_quiz_session(
+    cards: list[tuple[str, str]], n: int, provider: Provider | None = None
+) -> list[dict]:
+    """Manda o pool inteiro numa única requisição e recebe n quizzes."""
+    return await _generate_session(build_quiz_prompt(cards, n), "quizzes", provider)
+
+
+async def generate_cloze_session(
+    cards: list[tuple[str, str]], n: int, provider: Provider | None = None
+) -> list[dict]:
+    """Manda o pool inteiro numa única requisição e recebe n exercícios cloze."""
+    return await _generate_session(build_cloze_prompt(cards, n), "exercises", provider)

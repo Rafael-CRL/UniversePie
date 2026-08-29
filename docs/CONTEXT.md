@@ -33,6 +33,18 @@ filosofia se traduz em prompts de design de UI.
 
 ---
 
+## Provedor de IA
+
+Escolhido por `AI_PROVIDER`/`AI_MODEL` no `.env`, implementado em `src/providers.py`.
+Gemini (padrão), Groq, Ollama (local, sem chave nem rate limit), Anthropic, e os
+compatíveis com a API da OpenAI (DeepSeek, Kimi, Z.ai, OpenRouter, `custom`).
+
+Trocar de provedor é o que torna a auditoria de qualidade viável: o tier gratuito
+do Gemini não aguenta rodadas longas, e comparar o mesmo pool de cards em modelos
+diferentes separa "o prompt está ruim" de "o modelo é fraco".
+
+---
+
 ## Endpoints ativos
 
 | Rota | Método | Descrição |
@@ -40,6 +52,7 @@ filosofia se traduz em prompts de design de UI.
 | `/` | GET | Serve `index.html` |
 | `/api/quiz-session?n=5` | GET | Gera `n` quizzes de múltipla escolha |
 | `/api/cloze-session?n=5` | GET | Gera `n` exercícios cloze (preenchimento livre) |
+| `/api/status` | GET | Diagnóstico: Anki, deck, provedor de IA ativo |
 
 ---
 
@@ -87,4 +100,3 @@ filosofia se traduz em prompts de design de UI.
 - Tags automáticas por área
 - Detecção de lacunas por padrão de erro
 - Exercícios de escrita livre (depende de avaliação confiável pela IA)
-- Abstração do provedor de IA (hardcoded para Gemini hoje)
