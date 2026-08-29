@@ -1,6 +1,6 @@
 {
   "meta": {
-    "timestamp": "2026-08-29 18:47",
+    "timestamp": "2026-08-29 18:54",
     "commit": "e8055f9",
     "mode": "both",
     "runs": 3,
@@ -16,10 +16,10 @@
     "batches_requested": 6,
     "batches_failed": 0,
     "items_audited": 30,
-    "items_flagged": 8,
-    "clean_rate": 0.73,
-    "errors": 0,
-    "warnings": 10,
+    "items_flagged": 11,
+    "clean_rate": 0.63,
+    "errors": 1,
+    "warnings": 13,
     "infos": 1
   },
   "stats": {
@@ -125,6 +125,38 @@
       "severity": "warn",
       "message": "Vazamento na explicação: referência numerada a card — 'Card 2'.",
       "mode": "quiz",
+      "batch": 3,
+      "item": 5
+    },
+    {
+      "check": "person_mismatch",
+      "severity": "error",
+      "message": "A expressão-alvo está na 2ª pessoa ('take upon yourself') mas a frase fala de 'She' — preenchida, sai agramatical.",
+      "mode": "cloze",
+      "batch": 1,
+      "item": 1
+    },
+    {
+      "check": "does_not_fit_the_blank",
+      "severity": "warn",
+      "message": "'it transpired' na lacuna repete uma palavra da frase ('it it'), em acceptable_alternatives.",
+      "mode": "cloze",
+      "batch": 1,
+      "item": 2
+    },
+    {
+      "check": "does_not_fit_the_blank",
+      "severity": "warn",
+      "message": "'it emerged' na lacuna repete uma palavra da frase ('it it'), em acceptable_alternatives.",
+      "mode": "cloze",
+      "batch": 1,
+      "item": 2
+    },
+    {
+      "check": "does_not_fit_the_blank",
+      "severity": "warn",
+      "message": "'destroy completely' na lacuna repete uma palavra da frase ('completely completely'), em acceptable_alternatives.",
+      "mode": "cloze",
       "batch": 3,
       "item": 5
     },

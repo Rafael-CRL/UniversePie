@@ -125,6 +125,16 @@ feedback é vermelho. Pontuação, artigo e contração produzem o mesmo resulta
 ativa: ensina ao usuário que a resposta certa está errada. A taxa real desse
 falso negativo nunca foi medida.
 
+**Agravante medido em 2026-08-29.** Parte dos exercícios já nasce quebrada,
+antes de qualquer questão de matching. Em 56 exercícios de cloze da linha de
+base, 6 não têm resposta certa possível: `take upon yourself` numa frase sobre
+"She" ("She was hesitant to take upon yourself the enormous task"),
+`get your head around` numa frase sobre "me", e alternativas que duplicam
+palavra da frase ("it _____ that" com alternativa "it transpired" produz "it
+it transpired"). O auditor passou a detectar isso — checagens
+`person_mismatch` e `does_not_fit_the_blank` — mas **o prompt continua gerando**.
+Corrigir o matching não resolve esses casos; a correção é no prompt de cloze.
+
 **Nota de escopo.** A decisão consolidada nº 2 do `CLAUDE.md` congela
 *avaliação de texto livre pela IA*. Melhorar a normalização continua sendo
 string matching e não conflita com ela.

@@ -177,6 +177,55 @@ def test_detects_alternative_that_repeats_the_target():
     assert "alternative_equals_target" in checks(findings, WARN)
 
 
+def test_detects_alternative_that_does_not_fit_the_blank():
+    """A avaliação é igualdade de string: uma alternativa que não encaixa marca
+    de errado quem respondeu certo. 'it _____ that' + 'it transpired' vira
+    'it it transpired that'."""
+    findings = check_cloze_item(
+        cloze(
+            sentence="After weeks of investigation, it _____ that the documents were forged.",
+            target_expression="turned out",
+            acceptable_alternatives=["it transpired"],
+        ),
+        "cloze",
+        1,
+        1,
+    )
+    assert "does_not_fit_the_blank" in checks(findings, WARN)
+
+
+def test_detects_target_in_the_wrong_person():
+    """'take upon yourself' numa frase sobre 'she' sai agramatical quando
+    preenchida, e não existe resposta certa possível."""
+    findings = check_cloze_item(
+        cloze(
+            sentence="She was hesitant to _____ the enormous task.",
+            target_expression="take upon yourself",
+            acceptable_alternatives=["shoulder"],
+        ),
+        "cloze",
+        1,
+        1,
+    )
+    assert "person_mismatch" in checks(findings, ERROR)
+
+
+def test_imperative_sentences_have_an_implied_you():
+    """'Please, don't _____ about the results; we don't have data' é imperativo:
+    o 'we' da oração seguinte não governa o alvo."""
+    findings = check_cloze_item(
+        cloze(
+            sentence="Please, don't _____ about the election results; we don't have enough data yet.",
+            target_expression="get ahead of yourself",
+            acceptable_alternatives=["jump to conclusions"],
+        ),
+        "cloze",
+        1,
+        1,
+    )
+    assert "person_mismatch" not in checks(findings)
+
+
 # --- lote e agregados ------------------------------------------------------
 
 def test_detects_items_dropped_by_the_backend():

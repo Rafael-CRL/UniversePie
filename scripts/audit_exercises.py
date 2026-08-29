@@ -281,6 +281,41 @@ def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Find
         col.add("target_in_sentence", ERROR, f"A resposta ('{target}') aparece na própria frase.")
     if target and contains_phrase(hint, target):
         col.add("target_in_hint", ERROR, f"A dica entrega a resposta ('{target}').")
+    # A avaliação é por igualdade de string: se a expressão não encaixa na frase
+    # exatamente como está escrita, o exercício marca de errado quem acertou.
+    for candidate, role, severity in (
+        [(target, "target_expression", ERROR)]
+        + [(str(a), "acceptable_alternatives", WARN) for a in alternatives]
+    ):
+        filled = re.sub(r"_{2,}", candidate, sentence, count=1)
+        repeated = re.search(r"\b(\w+)\s+\1\b", filled, re.IGNORECASE)
+        if repeated and candidate:
+            col.add(
+                "does_not_fit_the_blank",
+                severity,
+                f"'{candidate}' na lacuna repete uma palavra da frase "
+                f"('{repeated.group(1)} {repeated.group(1)}'), em {role}.",
+            )
+
+    # 'take upon yourself' numa frase sobre 'she' produz "She was hesitant to
+    # take upon yourself...". O imperativo é exceção: tem 'you' implícito.
+    if re.search(r"\b(your|yourself|yourselves)\b", target, re.IGNORECASE) and not re.search(
+        r"\byou(r|rs|rself|rselves)?\b", sentence, re.IGNORECASE
+    ):
+        # Só o trecho antes da lacuna: "Please, don't _____ ...; we don't have
+        # data" é imperativo, e o 'we' da oração seguinte não governa o alvo.
+        before_blank = re.split(r"_{2,}", sentence, maxsplit=1)[0]
+        other_subject = re.search(
+            r"\b(he|she|they|it|i|we|him|her|them|me|us|his|their|my|our)\b", before_blank, re.IGNORECASE
+        )
+        if other_subject:
+            col.add(
+                "person_mismatch",
+                ERROR,
+                f"A expressão-alvo está na 2ª pessoa ('{target}') mas a frase fala de "
+                f"'{other_subject.group(0)}' — preenchida, sai agramatical.",
+            )
+
     if HINT_GIVEAWAY.search(hint):
         col.add("hint_spells_answer", WARN, "Dica do tipo 'starts with' — o prompt pede dica semântica.")
     if not hint.strip():
@@ -768,7 +803,15 @@ def append_history(out_dir: Path, meta: dict, result: dict) -> Path:
     dashboard consome direto.
     """
     entry = {
-        **{k: meta.get(k) for k in ("timestamp", "commit", "tag", "provider", "mode", "runs", "n", "source", "cards")},
+        # Reanálise (`--from-raw`) do mesmo run gera uma linha nova de propósito:
+        # o auditor muda e os números mudam junto. O que identifica o run é o
+        # par (tag, run_timestamp); `analyzed_at` e `auditor_commit` dizem qual
+        # versão do auditor produziu aqueles números. Quem for ler isso deve
+        # ficar com a análise mais recente de cada run.
+        "run_timestamp": meta.get("timestamp"),
+        "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "auditor_commit": git_commit(),
+        **{k: meta.get(k) for k in ("commit", "tag", "provider", "mode", "runs", "n", "source", "cards")},
         "summary": result["summary"],
         "cost": result.get("cost", {}),
         "stats": result["stats"],
