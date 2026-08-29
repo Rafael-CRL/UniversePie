@@ -19,6 +19,21 @@ def test_strip_html_unescapes_entities():
     assert strip_html("Tom &amp; Jerry &lt;3") == "Tom & Jerry <3"
 
 
+def test_strip_html_unescapes_every_entity_not_just_a_handpicked_list():
+    """Regression test: a lista manual de entidades cobria cinco e deixava
+    &apos; passar, então o apóstrofo do Anki chegava literal ao prompt e à
+    tela ("I&apos;m so sick of your whining.").
+    """
+    assert strip_html("I&apos;m sick of it") == "I'm sick of it"
+    assert strip_html("caf&#233; &#39;quoted&#39;") == "café 'quoted'"
+
+
+def test_strip_html_turns_nbsp_into_a_regular_space():
+    """html.unescape devolve U+00A0 para &nbsp;; o colapso de espaço em
+    branco precisa continuar normalizando isso."""
+    assert strip_html("a&nbsp;b") == "a b"
+
+
 def test_strip_html_collapses_whitespace():
     assert strip_html("a   b\n\nc") == "a b c"
 

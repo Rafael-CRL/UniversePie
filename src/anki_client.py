@@ -1,3 +1,4 @@
+import html
 import random
 import re
 
@@ -23,11 +24,19 @@ def strip_html(text: str) -> str:
     """Remove tags HTML e referências [sound:...] do texto de um card do Anki."""
     text = re.sub(r"\[sound:[^\]]+\]", "", text)
     text = re.sub(r"<[^>]+>", "", text)
-    text = text.replace("&nbsp;", " ")
-    text = text.replace("&amp;", "&")
-    text = text.replace("&lt;", "<")
-    text = text.replace("&gt;", ">")
-    text = text.replace("&quot;", '"')
+    # html.unescape em vez de uma lista manual: o Anki grava apóstrofo como
+    # &apos; (109 ocorrências em 91 dos 537 cards do deck de teste), e a lista
+    # antiga só cobria &nbsp; &amp; &lt; &gt; &quot; — o texto chegava ao prompt
+    # e à tela como "I&apos;m so sick of your whining."
+    #
+    # Repetido até estabilizar porque html.unescape faz um passe só, enquanto a
+    # sequência de replaces antiga decodificava em cascata: "&amp;lt;" virava
+    # "&lt;" e depois "<". O limite existe para não depender do conteúdo do card.
+    for _ in range(3):
+        decoded = html.unescape(text)
+        if decoded == text:
+            break
+        text = decoded
     # Decoding entities above can turn double-encoded markup (e.g. a card
     # literally containing "&amp;lt;b&amp;gt;") into real tags. Strip again
     # to catch those before they reach the Gemini prompt or the frontend.
