@@ -5,3 +5,7 @@ venv/
 .env
 *.egg-info/
 .pytest_cache/
+
+# Relatórios de auditoria (artefatos de run); o pool de exemplo fica versionado
+docs/audit/*
+!docs/audit/pool-exemplo.json
