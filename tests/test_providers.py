@@ -62,6 +62,53 @@ def test_groq_sends_the_prompt_in_json_mode(capture):
     assert text == '{"quizzes": []}'
 
 
+def test_openai_compatible_request_caps_the_output_length(capture):
+    """Sem max_tokens a Groq trunca uma sessão de 5 exercícios e, no modo JSON,
+    descarta a resposta inteira com 400."""
+    respond(capture, httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]}))
+
+    asyncio.run(GroqProvider().generate("prompt"))
+
+    body = httpx.Response(200, content=capture.sent[0].content).json()
+    assert body["max_tokens"] >= 4096
+
+
+def test_retries_without_max_tokens_when_the_server_rejects_it(monkeypatch):
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(400, json={"error": {"message": "max_tokens is too large"}})
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+
+    transport = httpx.MockTransport(handler)
+    original = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: original(*a, **{**k, "transport": transport}))
+
+    assert asyncio.run(GroqProvider().generate("prompt")) == "{}"
+    assert calls["n"] == 2
+
+
+def test_error_message_surfaces_the_real_cause_not_the_generic_one(capture):
+    """A Groq deixa `message` genérica e põe a causa em `failed_generation`."""
+    respond(
+        capture,
+        httpx.Response(
+            400,
+            json={
+                "error": {
+                    "message": "Failed to generate JSON. Please adjust your prompt.",
+                    "failed_generation": "max completion tokens reached before generating a valid document",
+                }
+            },
+        ),
+    )
+
+    with pytest.raises(ProviderError, match="max completion tokens reached"):
+        asyncio.run(GroqProvider().generate("prompt"))
+
+
 def test_rate_limit_message_says_when_the_quota_comes_back(capture):
     """Sem os headers a mensagem só diz 'tente mais tarde' — inútil para
     decidir entre esperar e trocar de provedor."""
@@ -164,6 +211,34 @@ def test_ollama_forces_json_and_widens_the_context(capture):
     assert body["format"] == "json"
     assert body["stream"] is False
     assert body["options"]["num_ctx"] >= 8192
+
+
+def test_ollama_turns_reasoning_off(capture):
+    """qwen3 e gemma4 raciocinam por padrão e gastam quase todo o tempo nisso;
+    a saída aqui é JSON de esquema fixo."""
+    respond(capture, httpx.Response(200, json={"message": {"content": "{}"}}))
+
+    asyncio.run(OllamaProvider(model="qwen3:8b").generate("prompt"))
+
+    body = httpx.Response(200, content=capture.sent[0].content).json()
+    assert body["think"] is False
+
+
+def test_ollama_retries_without_the_think_field_when_the_model_rejects_it(monkeypatch):
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(400, json={"error": "model does not support thinking"})
+        return httpx.Response(200, json={"message": {"content": "{}"}})
+
+    transport = httpx.MockTransport(handler)
+    original = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: original(*a, **{**k, "transport": transport}))
+
+    assert asyncio.run(OllamaProvider().generate("prompt")) == "{}"
+    assert calls["n"] == 2
 
 
 def test_ollama_offline_says_how_to_start_it(monkeypatch):

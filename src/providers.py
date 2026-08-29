@@ -102,9 +102,16 @@ class Provider(ABC):
         except Exception:
             return (response.text or "")[:200]
         error = payload.get("error", payload)
-        if isinstance(error, dict):
-            return str(error.get("message", ""))[:300]
-        return str(error)[:300]
+        if not isinstance(error, dict):
+            return str(error)[:300]
+
+        detail = str(error.get("message", ""))[:300]
+        # A Groq põe a causa real aqui e deixa `message` genérica ("Failed to
+        # generate JSON. Please adjust your prompt.").
+        failed = str(error.get("failed_generation", ""))
+        if failed and len(failed) < 200:
+            detail = f"{detail} [{failed}]".strip()
+        return detail
 
     @staticmethod
     def _rate_limit_hint(response: httpx.Response) -> str:
@@ -184,24 +191,38 @@ class OpenAICompatProvider(Provider):
     OpenRouter e qualquer servidor local que fale o mesmo dialeto."""
 
     supports_json_mode = True
+    # Teto de saída, equilibrando dois erros opostos medidos na Groq:
+    # sem o campo, o padrão do provedor trunca uma sessão de 5 exercícios e o
+    # modo JSON devolve 400 descartando tudo ("max completion tokens reached
+    # before generating a valid document"); com 8192, o valor reservado conta
+    # contra o limite de tokens por minuto e a requisição leva 413 antes de
+    # sair ("Limit 8000, Requested 9721"). Uma sessão de 5 gasta ~1.100 tokens
+    # de saída, então 4096 dá folga de três vezes sem estourar cota de tier
+    # gratuito.
+    max_tokens = 4096
 
     async def generate(self, prompt: str) -> str:
         try:
-            return await self._chat(prompt, json_mode=self.supports_json_mode)
+            return await self._chat(prompt, json_mode=self.supports_json_mode, max_tokens=self.max_tokens)
         except ProviderError as exc:
+            message = str(exc).lower()
             # Servidores mais antigos rejeitam response_format; vale uma
             # segunda tentativa sem ele antes de desistir.
-            if self.supports_json_mode and "response_format" in str(exc).lower():
-                return await self._chat(prompt, json_mode=False)
+            if self.supports_json_mode and "response_format" in message:
+                return await self._chat(prompt, json_mode=False, max_tokens=self.max_tokens)
+            if "max_tokens" in message or "max_completion_tokens" in message:
+                return await self._chat(prompt, json_mode=self.supports_json_mode, max_tokens=None)
             raise
 
     def extra_headers(self) -> dict:
         return {}
 
-    async def _chat(self, prompt: str, json_mode: bool) -> str:
+    async def _chat(self, prompt: str, json_mode: bool, max_tokens: int | None) -> str:
         body: dict = {"model": self.model, "messages": [{"role": "user", "content": prompt}]}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
+        if max_tokens:
+            body["max_tokens"] = max_tokens
 
         headers = {"Content-Type": "application/json", **self.extra_headers()}
         if self.api_key:
@@ -307,7 +328,16 @@ class OllamaProvider(Provider):
         self.base_url = OLLAMA_BASE_URL
 
     async def generate(self, prompt: str) -> str:
-        body = {
+        try:
+            return await self._chat(prompt, think=False)
+        except ProviderError as exc:
+            # Modelo sem suporte a raciocínio rejeita o campo em vez de ignorá-lo.
+            if "think" in str(exc).lower():
+                return await self._chat(prompt, think=None)
+            raise
+
+    async def _chat(self, prompt: str, think: bool | None) -> str:
+        body: dict = {
             "model": self.model,
             "stream": False,
             "format": "json",
@@ -316,6 +346,12 @@ class OllamaProvider(Provider):
             # do Ollama): sem isso o começo do prompt é truncado em silêncio.
             "options": {"num_ctx": 8192},
         }
+        if think is not None:
+            # qwen3 e gemma4 raciocinam por padrão e gastam a maior parte do
+            # tempo nisso — 96s para gerar 3 quizzes. A saída aqui é JSON com
+            # esquema fixo, onde o ganho do raciocínio não compensa.
+            body["think"] = think
+
         response = await self._post(f"{self.base_url.rstrip('/')}/api/chat", body)
         return response.json().get("message", {}).get("content") or ""
 
