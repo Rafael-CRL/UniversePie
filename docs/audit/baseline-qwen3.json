@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "timestamp": "2026-08-29 18:47",
+    "commit": "e8055f9",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "ollama/qwen3:8b",
+    "cards": "sorteados do Anki a cada rodada",
+    "url": "http://localhost:14567",
+    "tag": "baseline-qwen3",
+    "reanalyzed_from": "docs/audit/baseline-qwen3.raw.json"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 0,
+    "items_audited": 30,
+    "items_flagged": 5,
+    "clean_rate": 0.83,
+    "errors": 0,
+    "warnings": 5,
+    "infos": 1
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 7,
+        "1": 7,
+        "2": 1,
+        "3": 0
+      },
+      "answer_position_top_share": 0.47,
+      "longest_option_is_answer": 0.27,
+      "quiz_types": {
+        "discrimination": 3,
+        "production": 3,
+        "interference": 3,
+        "polysemy": 3,
+        "contextual": 3
+      },
+      "strategy_coverage": "5/5",
+      "items": 15,
+      "items_using_card_without_back": 2,
+      "defect_rate_with_gap": 0.5,
+      "defect_rate_without_gap": 0.31
+    },
+    "cloze": {
+      "commonality": {
+        "common": 6,
+        "moderate": 7,
+        "niche": 2
+      },
+      "alternatives_avg": 2.0,
+      "items": 15
+    }
+  },
+  "findings": [
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Idiomatic expressions for intense actions Drop it You want t') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 2
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: fala sobre o aluno em terceira pessoa — 'the learner'.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 3
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Pragmatic implication of a boss's message The team will be i') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 4
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Expressing frustration with a situation Drop it You want to ') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 2
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Pragmatic implication of a statement The team is being inclu') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 5
+    },
+    {
+      "check": "source_without_back",
+      "severity": "info",
+      "message": "Exercícios que usaram card sem back falharam 50% das vezes (2 itens) contra 31% dos demais (13 itens).",
+      "mode": "quiz",
+      "batch": 0,
+      "item": 0
+    }
+  ]
+}

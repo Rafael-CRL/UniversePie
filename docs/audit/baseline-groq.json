@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "timestamp": "2026-08-29 18:47",
+    "commit": "e8055f9",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "groq/openai/gpt-oss-20b",
+    "cards": "sorteados do Anki a cada rodada",
+    "url": "http://localhost:14567",
+    "tag": "baseline-groq",
+    "reanalyzed_from": "docs/audit/baseline-groq.raw.json"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 2,
+    "items_audited": 13,
+    "items_flagged": 0,
+    "clean_rate": 1.0,
+    "errors": 2,
+    "warnings": 2,
+    "infos": 1
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 2,
+        "1": 0,
+        "2": 0,
+        "3": 0
+      },
+      "answer_position_top_share": 1.0,
+      "longest_option_is_answer": 0.0,
+      "quiz_types": {
+        "interference": 1,
+        "production": 1
+      },
+      "strategy_coverage": "2/5",
+      "items": 2
+    },
+    "cloze": {
+      "commonality": {
+        "common": 3,
+        "moderate": 7,
+        "niche": 1
+      },
+      "alternatives_avg": 2.0,
+      "items": 11,
+      "items_using_card_without_back": 2,
+      "defect_rate_with_gap": 0.0,
+      "defect_rate_without_gap": 0.0
+    }
+  },
+  "findings": [
+    {
+      "check": "count_mismatch",
+      "severity": "warn",
+      "message": "Pedidos 5 itens, recebidos 2 (itens inválidos descartados pelo backend?).",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 0
+    },
+    {
+      "check": "request_failed",
+      "severity": "error",
+      "message": "Requisição falhou: ProviderError: groq/openai/gpt-oss-20b respondeu HTTP 400. Failed to validate JSON. Please adjust your prompt. See 'failed_generation' for more details.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 0
+    },
+    {
+      "check": "request_failed",
+      "severity": "error",
+      "message": "Requisição falhou: ProviderError: groq/openai/gpt-oss-20b respondeu HTTP 400. Failed to validate JSON. Please adjust your prompt. See 'failed_generation' for more details.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 0
+    },
+    {
+      "check": "count_mismatch",
+      "severity": "warn",
+      "message": "Pedidos 5 itens, recebidos 1 (itens inválidos descartados pelo backend?).",
+      "mode": "cloze",
+      "batch": 3,
+      "item": 0
+    },
+    {
+      "check": "source_without_back",
+      "severity": "info",
+      "message": "Exercícios que usaram card sem back falharam 0% das vezes (2 itens) contra 0% dos demais (9 itens).",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    }
+  ]
+}

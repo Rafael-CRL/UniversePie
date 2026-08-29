@@ -6,6 +6,12 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-# Relatórios de auditoria (artefatos de run); o pool de exemplo fica versionado
+# Auditoria: fica versionado só o que sustenta decisão — o histórico acumulado
+# e as linhas de base. Respostas cruas, relatórios em markdown, amostras de
+# revisão e pools com cards reais do usuário ficam de fora.
 docs/audit/*
+!docs/audit/history.jsonl
+!docs/audit/baseline-*.json
 !docs/audit/pool-exemplo.json
+# As cruas voltam a ser ignoradas: a regra acima também casaria *.raw.json.
+docs/audit/*.raw.json

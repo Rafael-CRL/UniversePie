@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import collections
+import random
 import json
 import re
 import subprocess
@@ -579,6 +580,11 @@ async def collect_direct(
                     raw_items = await generate_fn(cards, n, provider)
                     items = build_items(item_cls, raw_items, cards)
                     record["latency_s"] = round(time.monotonic() - started, 2)
+                    record["usage"] = provider.last_usage
+                    # O pool inteiro, não só os cards citados: permite reanalisar
+                    # depois perguntas que hoje não sabemos fazer (o modelo ignorou
+                    # cards? preferiu os que têm back?).
+                    record["pool"] = [list(c) for c in cards]
                     record["payload"] = {
                         key: [item.model_dump() for item in items],
                         "total": len(items),
@@ -710,10 +716,32 @@ def analyze(records: list[dict]) -> dict:
     total_items = sum(len(v) for v in located_by_mode.values())
     counts = collections.Counter(f.severity for f in findings)
 
+    usages = [r["usage"] for r in records if r.get("usage")]
+    latencies = [r["latency_s"] for r in records if r.get("latency_s") is not None]
+    cost = {}
+    if usages:
+        def total(field):
+            values = [u.get(field) for u in usages if u.get(field) is not None]
+            return sum(values) if values else None
+
+        cost = {
+            "prompt_tokens": total("prompt_tokens"),
+            "completion_tokens": total("completion_tokens"),
+            "total_tokens": total("total_tokens"),
+            "requests": len(usages),
+        }
+        if cost["total_tokens"] and total_items:
+            cost["tokens_per_item"] = round(cost["total_tokens"] / total_items)
+    if latencies:
+        cost["latency_avg_s"] = round(sum(latencies) / len(latencies), 1)
+        if total_items:
+            cost["seconds_per_item"] = round(sum(latencies) / total_items, 1)
+
     return {
         "batches": batches,
         "findings": findings,
         "stats": stats,
+        "cost": cost,
         "summary": {
             "batches_requested": len(records),
             "batches_failed": failed,
@@ -730,6 +758,76 @@ def analyze(records: list[dict]) -> dict:
 # --------------------------------------------------------------------------
 # Relatórios
 # --------------------------------------------------------------------------
+
+def append_history(out_dir: Path, meta: dict, result: dict) -> Path:
+    """Uma linha por run num .jsonl.
+
+    Os relatórios são arquivos soltos: bons para ler um run, inúteis para
+    perguntar "isto melhorou desde outubro?" ou "qual modelo rende mais por
+    token?". O histórico existe para essas perguntas, e é o formato que um
+    dashboard consome direto.
+    """
+    entry = {
+        **{k: meta.get(k) for k in ("timestamp", "commit", "tag", "provider", "mode", "runs", "n", "source", "cards")},
+        "summary": result["summary"],
+        "cost": result.get("cost", {}),
+        "stats": result["stats"],
+        "findings_by_check": dict(collections.Counter(f.check for f in result["findings"])),
+    }
+    path = out_dir / "history.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return path
+
+
+def export_sample(records: list[dict], size: int, path: Path) -> int:
+    """Amostra cega para revisão humana.
+
+    O auditor mede conformidade com regras, não valor pedagógico — e as duas
+    coisas divergem: um modelo pontuou 93% produzindo distratores inventados
+    ('depthness'), outro pontuou 73% produzindo a única armadilha de L1
+    legítima da rodada. Só uma pessoa lendo sem saber quem gerou resolve isso,
+    e o resultado vira o material de calibração de qualquer juiz automático
+    futuro.
+    """
+    pool = []
+    for record in records:
+        if "payload" not in record:
+            continue
+        key = ENDPOINTS[record["mode"]][1]
+        for item in record["payload"].get(key, []):
+            pool.append({"origem": record.get("provider", "?"), "modo": record["mode"], "item": item})
+
+    random.shuffle(pool)
+    chosen = pool[:size]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": i + 1,
+                    "modo": entry["modo"],
+                    # A origem fica no gabarito, não aqui: saber que veio de um
+                    # modelo de 4B contamina a avaliação.
+                    "exercicio": entry["item"],
+                    "sua_nota": None,
+                    "comentario": "",
+                }
+                for i, entry in enumerate(chosen)
+            ],
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    key_path = path.parent / f"{path.stem}-gabarito.json"
+    key_path.write_text(
+        json.dumps({str(i + 1): e["origem"] for i, e in enumerate(chosen)}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return len(chosen)
+
 
 def with_ext(prefix: Path, ext: str) -> Path:
     """`Path.with_suffix` comeria parte de uma tag com ponto (prompt-v4.1)."""
@@ -822,6 +920,12 @@ def render_markdown(result: dict, meta: dict) -> str:
         lines.append("")
     else:
         lines += ["Nenhum apontamento. 🎉", ""]
+
+    if result.get("cost"):
+        lines += ["### Consumo", "", "| Métrica | Valor |", "|---|---|"]
+        for key, value in result["cost"].items():
+            lines.append(f"| {key} | {format_stat(value)} |")
+        lines.append("")
 
     for mode, stats in result["stats"].items():
         lines += [f"### Estatísticas — {mode}", "", "| Métrica | Valor |", "|---|---|"]
@@ -949,6 +1053,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--save-cards", help="busca um pool no Anki, salva nesse arquivo e sai (use com --n)")
     parser.add_argument("--compare", nargs="+", metavar="REPORT.json", help="compara relatórios .json já gerados")
     parser.add_argument("--list-providers", action="store_true", help="mostra provedores, modelos padrão e o que falta configurar")
+    parser.add_argument("--sample", type=int, metavar="N", help="exporta N exercícios embaralhados para revisão humana cega (+ gabarito à parte)")
     parser.add_argument(
         "--fail-on",
         choices=["error", "warn", "never"],
@@ -1034,6 +1139,13 @@ def main(argv: list[str] | None = None) -> int:
         encoding="utf-8",
     )
 
+    history = append_history(with_ext(prefix, "").parent, meta, result)
+
+    if args.sample:
+        sample_path = with_ext(prefix, "-amostra.json")
+        n_sample = export_sample(records, args.sample, sample_path)
+        print(f"Amostra cega: {n_sample} exercícios em {sample_path} (gabarito à parte)")
+
     summary = result["summary"]
     print(
         f"\n{summary['items_audited']} itens auditados · "
@@ -1044,7 +1156,13 @@ def main(argv: list[str] | None = None) -> int:
         (f.check, f.severity) for f in result["findings"]
     ).most_common(10):
         print(f"  [{SEVERITY_LABEL[severity]}] {check}: {count}")
-    print(f"Relatórios: {with_ext(prefix, '.md')} · {with_ext(prefix, '.json')}")
+    cost = result.get("cost") or {}
+    if cost:
+        print(
+            "Consumo: "
+            + " · ".join(f"{k}={v}" for k, v in cost.items() if v is not None)
+        )
+    print(f"Relatórios: {with_ext(prefix, '.md')} · {with_ext(prefix, '.json')} · histórico em {history}")
 
     if args.fail_on == "never":
         return 0

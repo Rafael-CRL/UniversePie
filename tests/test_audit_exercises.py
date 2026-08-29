@@ -11,6 +11,8 @@ import pytest
 
 from scripts.audit_exercises import (
     ERROR,
+    append_history,
+    export_sample,
     compare_reports,
     load_cards,
     INFO,
@@ -332,3 +334,52 @@ def test_ungrounded_items_do_not_pollute_the_no_back_group():
 def test_no_comparison_when_every_card_has_a_back():
     result = _session([quiz(), quiz()])
     assert "defect_rate_with_gap" not in result["stats"]["quiz"]
+
+
+# --- dados para comparação posterior ---------------------------------------
+
+def test_cost_is_aggregated_per_run():
+    """Latência sozinha não diz se um modelo rendeu mais por token."""
+    result = analyze([
+        {"mode": "quiz", "batch": 1, "requested": 2, "latency_s": 3.0,
+         "usage": {"prompt_tokens": 1200, "completion_tokens": 2200, "total_tokens": 3400},
+         "payload": {"quizzes": [quiz(), quiz()], "total": 2}},
+    ])
+
+    assert result["cost"]["total_tokens"] == 3400
+    assert result["cost"]["tokens_per_item"] == 1700
+    assert result["cost"]["seconds_per_item"] == 1.5
+
+
+def test_history_accumulates_one_line_per_run(tmp_path):
+    """Os relatórios são arquivos soltos; sem o histórico não dá para perguntar
+    se algo melhorou entre um run e outro."""
+    result = analyze([{"mode": "quiz", "batch": 1, "requested": 1, "payload": {"quizzes": [quiz()], "total": 1}}])
+
+    for tag in ("antes", "depois"):
+        append_history(tmp_path, {"tag": tag, "provider": "groq/x", "timestamp": "2026-08-29 18:00"}, result)
+
+    lines = (tmp_path / "history.jsonl").read_text(encoding="utf-8").strip().split("\n")
+    assert [json.loads(l)["tag"] for l in lines] == ["antes", "depois"]
+    assert json.loads(lines[0])["summary"]["items_audited"] == 1
+
+
+def test_sample_export_hides_which_model_produced_each_exercise(tmp_path):
+    """Saber que o exercício veio de um modelo de 4B contamina a avaliação."""
+    records = [
+        {"mode": "quiz", "batch": 1, "provider": "ollama/gemma4:e4b",
+         "payload": {"quizzes": [quiz(), quiz()], "total": 2}},
+        {"mode": "quiz", "batch": 2, "provider": "gemini/gemini-2.5-flash",
+         "payload": {"quizzes": [quiz()], "total": 1}},
+    ]
+
+    path = tmp_path / "amostra.json"
+    assert export_sample(records, 10, path) == 3
+
+    sample = json.loads(path.read_text(encoding="utf-8"))
+    assert all("origem" not in entry and "provider" not in json.dumps(entry) for entry in sample)
+    assert all(entry["sua_nota"] is None for entry in sample)
+
+    gabarito = json.loads((tmp_path / "amostra-gabarito.json").read_text(encoding="utf-8"))
+    assert sorted(gabarito) == ["1", "2", "3"]
+    assert set(gabarito.values()) == {"ollama/gemma4:e4b", "gemini/gemini-2.5-flash"}

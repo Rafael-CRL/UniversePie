@@ -1,0 +1,148 @@
+{
+  "meta": {
+    "timestamp": "2026-08-29 18:47",
+    "commit": "e8055f9",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "ollama/gemma4:e4b",
+    "cards": "sorteados do Anki a cada rodada",
+    "url": "http://localhost:14567",
+    "tag": "baseline-gemma4",
+    "reanalyzed_from": "docs/audit/baseline-gemma4.raw.json"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 0,
+    "items_audited": 30,
+    "items_flagged": 8,
+    "clean_rate": 0.73,
+    "errors": 0,
+    "warnings": 10,
+    "infos": 1
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 9,
+        "1": 6,
+        "2": 0,
+        "3": 0
+      },
+      "answer_position_top_share": 0.6,
+      "longest_option_is_answer": 0.2,
+      "quiz_types": {
+        "discrimination": 3,
+        "production": 3,
+        "interference": 3,
+        "contextual": 3,
+        "polysemy": 3
+      },
+      "strategy_coverage": "5/5",
+      "items": 15,
+      "items_using_card_without_back": 4,
+      "defect_rate_with_gap": 0.5,
+      "defect_rate_without_gap": 0.55
+    },
+    "cloze": {
+      "commonality": {
+        "moderate": 11,
+        "niche": 3,
+        "common": 1
+      },
+      "alternatives_avg": 2.0,
+      "items": 15
+    }
+  },
+  "findings": [
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Ambiguity of 'Go On' (Continue vs. Occur) The protest contin') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 5
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'Card 2'.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 1
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'Card 6'.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 2
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'Card 1'.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 3
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência explícita ao pool de cards — 'from the pool'.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 3
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'Card 5'.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 4
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'Card 15'.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 5
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência explícita ao pool de cards — 'from the pool'.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 2
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'Card 2'.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 5
+    },
+    {
+      "check": "answer_position_bias",
+      "severity": "warn",
+      "message": "9/15 respostas na posição 0 (esperado ~25%).",
+      "mode": "",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "source_without_back",
+      "severity": "info",
+      "message": "Exercícios que usaram card sem back falharam 50% das vezes (4 itens) contra 55% dos demais (11 itens).",
+      "mode": "quiz",
+      "batch": 0,
+      "item": 0
+    }
+  ]
+}
