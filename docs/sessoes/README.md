@@ -26,7 +26,16 @@ medidos. É o que a branch `feat/card-quality-audit` existe para fazer.
 
 ## Linha de base vigente
 
-**`2026-08-29-auditoria.md`** — 118 exercícios, 5 configurações de modelo. É contra
-ela que as próximas correções de prompt devem ser comparadas
-(`--compare docs/audit/baseline-*.json`). Atualizar esta linha quando houver
-medição nova.
+**`2026-08-30-linha-de-base-g1.md`** — 120 exercícios, 4 modelos, **pool ideal
+congelado** (`audit/pool-exemplo.json`). É contra ela que as correções de prompt
+devem ser comparadas:
+
+```
+--compare docs/audit/base-g1-gemini.json docs/audit/base-g1-groq.json           docs/audit/base-g1-qwen3.json docs/audit/base-g1-gemma4.json
+```
+
+`2026-08-29-auditoria.md` continua sendo evidência permanente, mas **não serve
+de comparação**: sorteou pool a cada rodada, e é anterior ao campo
+`source_expression`. É a referência do grupo 2 (material real), não do grupo 1.
+
+Atualizar esta linha quando houver medição nova.

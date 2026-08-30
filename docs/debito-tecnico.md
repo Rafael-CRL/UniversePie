@@ -11,23 +11,30 @@ aqui ficam defeitos e lacunas do que já existe.
 ## As cinco correções de prompt pendentes
 
 São o próximo passo do projeto pela decisão
-[0013](decisoes/0013-ordem-de-execucao.md), e devem ser feitas e medidas juntas,
-contra `audit/baseline-*.json`.
+[0013](decisoes/0013-ordem-de-execucao.md). Linha de base vigente:
+`audit/base-g1-*.json` — pool ideal congelado (`audit/pool-exemplo.json`),
+quatro modelos, 120 exercícios, 2026-08-30.
 
-**Ordenadas por evidência, não por conveniência.** Na linha de base, o defeito
-está no quiz: **26 achados no quiz contra 11 no cloze.**
+**Ordem por evidência no modelo que o usuário roda, não por gravidade
+imaginada.** A ordenação anterior punha o item 12 em primeiro "por natureza".
+A medição de 2026-08-30 desmentiu: ele não existe fora de modelo local.
 
-| # | Defeito | Prompt | Evidência |
-|---|---|---|---|
-| [12](#12-exercício-que-não-se-ancora-no-card-do-usuário) | Exercício não ancorado no card do usuário | quiz | 5 `weak_grounding` + 1 `ungrounded` |
-| [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | A numeração do pool vaza para a explicação | quiz | 13 ocorrências — o mais frequente |
-| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta quase nunca cai nas últimas posições | quiz | 0/62 na última posição, 4 modelos |
-| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze | 5 exercícios, 7 achados |
-| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | A rotação garante que parte da sessão não seja n+1 | quiz | estrutural |
+| # | Defeito | Prompt | Evidência | Aparece no Gemini? |
+|---|---|---|---|---|
+| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta nunca cai na última posição | quiz | **0/122**, 6 configurações, 2 pools | sim |
+| [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | A numeração do pool vaza para a explicação | quiz | 6/60 no pool congelado; 13/62 no sorteado | sim |
+| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze | 7/15 no Groq; 0 no Gemini | não |
+| [12](#12-exercício-que-não-se-ancora-no-card-do-usuário) | Exercício não ancorado no card do usuário | quiz | **18 em modelo local, 0 em API** | não |
+| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | A rotação garante que parte da sessão não seja n+1 | quiz | sem número — ver o item | — |
 
-O item 12 vem primeiro por natureza, não por contagem: é o único que atinge
-diretamente a premissa do produto. Os outros produzem exercício ruim; ele produz
-exercício que não é deste projeto.
+**O item 9 lidera por reprodutibilidade.** Em 122 quizzes, seis configurações de
+modelo, dois pools diferentes e dois dias, a última alternativa foi a resposta
+**zero vezes**. Nenhum outro item chega perto dessa consistência, e a correção é
+uma instrução de distribuição.
+
+**Os itens 11 e 12 são condicionais ao modelo.** Corrigi-los medindo no Ollama
+otimiza para um modelo que não é o que roda em produção. Ver a ressalva em cada
+um antes de gastar sessão neles.
 
 Procedimento em `skills/prompt-review.md`. Mudar prompt exige confirmação do
 autor — ver `CLAUDE.md`.
@@ -304,6 +311,18 @@ A última alternativa **nunca** foi a resposta.
 > dizia 36/22/2/0 em 60 porque deixava de fora os 2 quizzes do `baseline-groq`,
 > que a contagem de 26 achados no quiz desta mesma página inclui.
 
+**Reconfirmado no pool ideal congelado** (2026-08-30, `base-g1-*`), quatro
+modelos, 60 quizzes novos:
+
+| pos 0 | pos 1 | pos 2 | pos 3 |
+|---|---|---|---|
+| 31 (52%) | 14 (23%) | 15 (25%) | **0 (0%)** |
+
+O viés para a primeira posição afrouxou (52% contra 61%) — o material ideal ajuda
+—, mas a **última posição continua absolutamente nunca**. Somando os dois pools:
+**0 em 122 quizzes, seis configurações de modelo, dois dias.** É o defeito mais
+reproduzível do projeto e por isso lidera o índice.
+
 **Impacto.** Quem marcar sempre a primeira acerta 60% sem saber inglês. Como o
 viés é idêntico em modelos não relacionados, a causa é o prompt, não o modelo.
 
@@ -329,9 +348,24 @@ back vazio — nos 62 quizzes:
 ```
 
 > Recontado em 2026-08-30 a partir dos `baseline-*.raw.json`. A versão anterior
-> dizia 4/87 (5%) e 8/11 (73%), que não reproduzem sob nenhum recorte. O sinal
-> é o mesmo e mais forte: seis vezes mais vazamento quando o modelo combina
-> quatro cards.
+> dizia 4/87 (5%) e 8/11 (73%), que não reproduzem sob nenhum recorte.
+
+**A causa declarada não sobreviveu ao pool congelado.** Nos 60 quizzes de
+`base-g1-*`, a correlação com o número de cards some:
+
+```
+1 card-fonte:  1/24  (4%)
+4 cards-fonte: 2/26  (8%)
+```
+
+Quatro por cento contra oito, não quatro por cento contra sessenta e dois. Ou o
+efeito vinha do material sorteado, ou nunca existiu e o recorte de 08-29 foi
+ruído em amostra pequena. **Não corrigir "combinar cards" — o vazamento é real e
+o mecanismo não está estabelecido.**
+
+O que se sustenta: 6 ocorrências em 60 quizzes no pool congelado (10%), e **está
+presente no Gemini** (3 das 6). É o único item além do 9 que aparece no modelo
+que roda em produção.
 
 **Impacto.** Cosmético do ponto de vista de aprendizado — o aluno vê depois de já
 ter respondido — mas expõe mecânica interna e polui a explicação, que é a parte
@@ -353,8 +387,14 @@ hesitant to take upon yourself the enormous task"); `get your head around` numa
 frase sobre "me" ("it took me a week to _____ its features"); "it _____ that" com
 a alternativa "it transpired", que produz "it it transpired".
 
-**Impacto.** Exercício impossível de acertar. É o defeito mais caro dos quatro,
-porque ensina ao usuário que ele errou algo que não tinha resposta.
+**Impacto.** Exercício impossível de acertar. Quando acontece, é o defeito mais
+caro, porque ensina ao usuário que ele errou algo que não tinha resposta.
+
+**Ressalva de 2026-08-30: também é condicional ao modelo.** No pool ideal
+congelado, 15 exercícios de cloze por modelo — Groq **7**, Gemini **0**,
+qwen3 **0**, gemma4 **0**. Em 2026-08-29, com pool sorteado, tinha sido gemma4 3
+e Groq 2. O denominador comum é o Groq; o Gemini nunca produziu um. Medir a
+correção em Gemini daria zero antes e zero depois.
 
 **Estado.** O auditor **detecta** — checagens `person_mismatch` e
 `does_not_fit_the_blank`, ambas de severidade ERRO. O prompt continua gerando.
@@ -402,11 +442,48 @@ Zero sobreposição léxica entre o que é testado
 E `ungrounded` (severidade ERRO, `used_cards` vazio) disparou numa rodada de 5
 itens em 2026-08-30 — o exercício não se apoiava em card nenhum.
 
-**Impacto.** É o único defeito da lista que ataca a premissa em vez da execução.
-Um exercício com viés de posição ainda ensina alguma coisa do deck do usuário; um
-exercício não ancorado é conteúdo genérico de inglês, que é precisamente o que o
-`premissas.md` diz que o projeto não faz. E os outros quatro defeitos foram
-catalogados enquanto este, mais grave, não estava documentado em lugar nenhum.
+## Ressalva que muda a prioridade — 2026-08-30
+
+**Este defeito não aparece em modelo de API.** Medido no mesmo pool ideal
+congelado, quatro modelos, 15 quizzes cada:
+
+| Modelo | Âncora fora do card-fonte |
+|---|---|
+| Gemini 2.5 Flash | 0 |
+| Groq gpt-oss-20b | 0 |
+| gemma4:e4b (local) | 1 |
+| qwen3:8b (local) | 4 |
+
+Somando **todo o histórico do projeto** — 15 rodadas, dois dias, incluindo
+OpenRouter minimax e nemotron: **18 achados de ancoragem em modelo local, 0 em
+modelo de API.**
+
+**A causa é o próprio prompt se autocitando.** Os cinco casos são as expressões
+dos exemplos embutidos nas descrições de estratégia: `sound` vem de
+`prompts.py:36` (*"sound" = healthy/safe vs noise vs to seem*) e
+`loop in the whole team` de `prompts.py:42`. O modelo pequeno copia o exemplo
+literal que tem à mão em vez de trabalhar o pool, e depois cita `used_cards`
+para parecer ancorado — num caso, os 15 cards de uma vez.
+
+Isso reproduz o `ungrounded` de `audit/medicao-fria.json`, que também era
+"Polysemy of **'sound'**", e os `weak_grounding` de 2026-08-29, que eram a
+mensagem do chefe do exemplo `contextual`.
+
+**Consequência para o plano.** Corrigir este item medindo no Ollama otimiza para
+um modelo que não é o que roda em produção. Se for corrigido, medir em API. E a
+correção candidata é barata: tirar as expressões literais dos exemplos de
+estratégia, ou marcá-las como ilustração proibida de reusar.
+
+---
+
+**Impacto.** Quando acontece, é o defeito mais grave da lista: ataca a premissa
+em vez da execução. Um exercício com viés de posição ainda ensina alguma coisa do
+deck do usuário; um exercício não ancorado é conteúdo genérico de inglês, que é
+precisamente o que o `premissas.md` diz que o projeto não faz.
+
+Mas *quando acontece* é a parte que faltava, e a resposta é: em modelo local. A
+frase anterior aqui dizia que ele era "mais grave" que os outros quatro e por isso
+liderava o índice. Gravidade não é frequência — ver a ressalva acima.
 
 **A medida ficou exata em 2026-08-30.** O quiz passou a declarar
 `source_expression` — a expressão do pool em que ele se apoia, copiada do card.

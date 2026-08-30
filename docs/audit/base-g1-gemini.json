@@ -1,0 +1,111 @@
+{
+  "meta": {
+    "timestamp": "2026-08-30 15:31",
+    "commit": "8c4392e",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "gemini/gemini-2.5-flash",
+    "cards": "docs/audit/pool-exemplo.json",
+    "url": "http://localhost:14567",
+    "tag": "base-g1-gemini"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 0,
+    "items_audited": 30,
+    "items_flagged": 3,
+    "clean_rate": 0.9,
+    "errors": 0,
+    "warnings": 4,
+    "infos": 3
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 10,
+        "1": 2,
+        "2": 3,
+        "3": 0
+      },
+      "answer_position_top_share": 0.67,
+      "longest_option_is_answer": 0.33,
+      "quiz_types": {
+        "discrimination": 3,
+        "interference": 3,
+        "production": 3,
+        "polysemy": 3,
+        "contextual": 3
+      },
+      "strategy_coverage": "5/5",
+      "items": 15
+    },
+    "cloze": {
+      "commonality": {
+        "common": 9,
+        "moderate": 6
+      },
+      "alternatives_avg": 2.47,
+      "items": 15
+    }
+  },
+  "findings": [
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'cards 7'.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 2
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento na explicação: referência numerada a card — 'Card 2'.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 3
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento em explanation: referência numerada a card — 'Card 6'.",
+      "mode": "cloze",
+      "batch": 1,
+      "item": 3
+    },
+    {
+      "check": "answer_position_bias",
+      "severity": "warn",
+      "message": "10/15 respostas na posição 0 (esperado ~25%).",
+      "mode": "",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'differentiating settle into and settle for' testado 2x na mesma auditoria.",
+      "mode": "quiz",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verb' testado 3x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'idiom' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    }
+  ]
+}
