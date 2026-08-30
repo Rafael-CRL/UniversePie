@@ -38,7 +38,9 @@ defeito de exercício.
 **2. Investigar o item 12 antes de corrigi-lo.**
 A contagem de grounding não separa "o modelo inventou, ignorando o pool" de "o
 modelo usou o pool e o `used_cards` veio errado". São correções diferentes — uma
-é prompt, outra é contrato. Ler os itens marcados no `.raw.json`.
+é prompt, outra é contrato. Ler o `used_cards_emitted` dos itens marcados no
+`.raw.json` — campo que só existe desde 2026-08-30 e só no caminho
+`--source direct`, então **a medição tem que ser direct, não HTTP.**
 
 **3. Corrigir, na ordem do índice de `debito-tecnico.md`.**
 Item 12, depois 10, 9, 11, 8. Ordem por evidência: **26 dos 37 defeitos da linha
@@ -65,8 +67,9 @@ Se a sessão terminar sem número novo, ela não cumpriu o objetivo.
 ## Ressalvas herdadas
 
 - **Mudar prompt exige confirmação do autor** (`CLAUDE.md`).
-- **O 6/56 do item 11 foi medido com a checagem `does_not_fit_the_blank`
-  defeituosa**, corrigida em 2026-08-30. Reconfirmar, não assumir.
+- **O item 11 já foi reconfirmado** (auditoria de 2026-08-30): reanalisar os
+  cinco `baseline-*.raw.json` com a checagem corrigida devolve os mesmos 40
+  achados. São 5 exercícios distintos e 7 achados, não "6 em 56".
 - **Pool congelado é obrigatório para comparar.** A linha de base de 2026-08-29
   sorteou pool a cada rodada, então parte da diferença entre modelos vem do
   material. Para medir prompt, o material tem que ser o mesmo.

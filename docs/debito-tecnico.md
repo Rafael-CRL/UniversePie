@@ -21,8 +21,8 @@ está no quiz: **26 achados no quiz contra 11 no cloze.**
 |---|---|---|---|
 | [12](#12-exercício-que-não-se-ancora-no-card-do-usuário) | Exercício não ancorado no card do usuário | quiz | 5 `weak_grounding` + 1 `ungrounded` |
 | [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | A numeração do pool vaza para a explicação | quiz | 13 ocorrências — o mais frequente |
-| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta quase nunca cai nas últimas posições | quiz | 0/60 na última posição, 4 modelos |
-| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze | 7 ocorrências (reconfirmar) |
+| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta quase nunca cai nas últimas posições | quiz | 0/62 na última posição, 4 modelos |
+| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze | 5 exercícios, 7 achados |
 | [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | A rotação garante que parte da sessão não seja n+1 | quiz | estrutural |
 
 O item 12 vem primeiro por natureza, não por contagem: é o único que atinge
@@ -265,14 +265,18 @@ de prompt pendente; as outras três estão em
 
 **O que é.** O prompt de quiz define `answer_index` e nunca pede distribuição.
 
-**Evidência.** 60 quizzes, quatro modelos independentes (Google, Alibaba, OpenAI,
+**Evidência.** 62 quizzes, quatro modelos independentes (Google, Alibaba, OpenAI,
 Google local; de 4B a proprietário grande), linha de base de 2026-08-29:
 
 | pos 0 | pos 1 | pos 2 | pos 3 |
 |---|---|---|---|
-| 36 (60%) | 22 (37%) | 2 (3%) | 0 (0%) |
+| 38 (61%) | 22 (35%) | 2 (3%) | 0 (0%) |
 
 A última alternativa **nunca** foi a resposta.
+
+> Recontado em 2026-08-30 a partir dos cinco `baseline-*.json`. A versão anterior
+> dizia 36/22/2/0 em 60 porque deixava de fora os 2 quizzes do `baseline-groq`,
+> que a contagem de 26 achados no quiz desta mesma página inclui.
 
 **Impacto.** Quem marcar sempre a primeira acerta 60% sem saber inglês. Como o
 viés é idêntico em modelos não relacionados, a causa é o prompt, não o modelo.
@@ -289,12 +293,19 @@ remedição contra a linha de base.
 leva a numeração adiante, para dentro da explicação.
 
 **Evidência.** 13 ocorrências na linha de base ("Card 2", "Card 10", "not in the
-pool" dentro da explicação). O que dirige é combinar cards, não o back vazio:
+pool" dentro da explicação), todas no quiz. O que dirige é combinar cards, não o
+back vazio — nos 62 quizzes:
 
 ```
-1 card-fonte:  4/87  (5%)
-4 cards-fonte: 8/11  (73%)
+1 card-fonte:  4/42  (10%)
+2 cards-fonte: 0/7   (0%)
+4 cards-fonte: 8/13  (62%)
 ```
+
+> Recontado em 2026-08-30 a partir dos `baseline-*.raw.json`. A versão anterior
+> dizia 4/87 (5%) e 8/11 (73%), que não reproduzem sob nenhum recorte. O sinal
+> é o mesmo e mais forte: seis vezes mais vazamento quando o modelo combina
+> quatro cards.
 
 **Impacto.** Cosmético do ponto de vista de aprendizado — o aluno vê depois de já
 ter respondido — mas expõe mecânica interna e polui a explicação, que é a parte
@@ -310,10 +321,11 @@ do bloco do pool para não sugerir numeração citável.
 **O que é.** Duas classes de defeito: alvo em pessoa incompatível com a frase, e
 alternativa que duplica palavra já presente na frase.
 
-**Evidência.** 6 em 56 exercícios da linha de base. `take upon yourself` numa
-frase sobre "She" ("She was hesitant to take upon yourself the enormous task");
-`get your head around` numa frase sobre "me"; "it _____ that" com a alternativa
-"it transpired", que produz "it it transpired".
+**Evidência.** 5 exercícios em 56 da linha de base, 7 achados (um exercício pode
+disparar as duas checagens). `take upon yourself` numa frase sobre "She" ("She was
+hesitant to take upon yourself the enormous task"); `get your head around` numa
+frase sobre "me" ("it took me a week to _____ its features"); "it _____ that" com
+a alternativa "it transpired", que produz "it it transpired".
 
 **Impacto.** Exercício impossível de acertar. É o defeito mais caro dos quatro,
 porque ensina ao usuário que ele errou algo que não tinha resposta.
@@ -329,9 +341,19 @@ frase construída.
 **Ressalva resolvida em 2026-08-30.** A checagem `does_not_fit_the_blank` varria a
 frase inteira, então "had had" ou "that that" legítimos disparavam contra qualquer
 candidato. Agora compara a frase antes e depois de preencher e só reporta a
-repetição que o candidato **introduziu**, com dois testes de regressão. O número
-6/56 foi medido com a versão antiga e pode estar inflado — reconfirmar na
-remedição.
+repetição que o candidato **introduziu**.
+
+O número não estava inflado: reanalisar os cinco `baseline-*.raw.json` com a
+checagem corrigida devolve os mesmos 40 achados, idênticos checagem a checagem.
+A contagem que estava errada era outra — "6 em 56" não sai dos dados; são 5
+exercícios distintos e 7 achados. **Não precisa reconfirmar.**
+
+A primeira correção, porém, tinha aberto dois furos, fechados na auditoria de
+2026-08-30: medir a frase original trocando a lacuna por espaço encostava as
+palavras vizinhas e inventava uma repetição na linha de base, mascarando a real
+("to ___ to" + "talk to"); e comparar conjuntos de palavras deixava uma
+repetição pré-existente apagar uma nova da mesma palavra. Agora usa contagem por
+ocorrência e um marcador na lacuna, com quatro testes de regressão.
 
 ---
 
@@ -363,7 +385,21 @@ catalogados enquanto este, mais grave, não estava documentado em lugar nenhum.
 **A investigar antes de corrigir.** A contagem não separa duas causas com
 correções diferentes: o modelo ignorou o pool e inventou, ou o modelo usou o pool
 e o `used_cards` veio errado. A segunda é defeito de contrato, não de conteúdo.
-Ler os itens marcados no `.raw.json` antes de mexer no prompt.
+
+> **Isto não era investigável até 2026-08-30.** `services.build_items` faz
+> `raw.pop("used_cards")`, então o índice que o modelo emitiu era destruído antes
+> de virar registro e o `.raw.json` guardava só o placeholder
+> `(source unavailable)` — idêntico nos dois casos. O auditor passou a guardar
+> `used_cards_emitted` em cada item no caminho `--source direct`. **A rodada de
+> medição da próxima sessão precisa ser `--source direct`**; por HTTP o servidor
+> já descartou o campo e a pergunta continua sem resposta.
+
+**Evidência preservada.** `audit/medicao-fria.json` (versionado, como as linhas
+de base; o `.md` e o `.raw.json` ficam locais pela mesma regra do `.gitignore`),
+rodada de 5 itens no `qwen3:8b` em 2026-08-30 12:07. O item 4 (`polysemy` — "Polysemy of
+'sound'") é o `ungrounded`: pergunta sobre 'sound' significando "healthy/safe"
+sem card-fonte nenhum. Estava só no scratchpad de sessão em `/tmp`, que é
+apagado.
 
 **Custo.** Baixo se for prompt. A instrução de ancorar existe; falta ser
 exigência verificável.

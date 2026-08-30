@@ -115,3 +115,9 @@ um teto alto demais custa é demorar a desistir de algo travado.
 A ressalva que justifica manter folga: modelo bem maior que não caiba na memória
 cai para CPU e fica ordens de grandeza mais lento. Nenhum instalado aqui hoje —
 se acontecer, `AI_TIMEOUT_S` e `--timeout` existem para isso.
+
+> **Correção de 2026-08-30 (auditoria).** Os 180s tinham sido escritos como
+> literal, então `AI_TIMEOUT_S` não tinha efeito nenhum no Ollama — enquanto a
+> mensagem de timeout mandava o usuário aumentar exatamente essa variável. Agora
+> é `max(AI_TIMEOUT_S, 180.0)`: piso medido, e a variável volta a valer para
+> cima.

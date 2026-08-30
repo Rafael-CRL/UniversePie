@@ -35,7 +35,7 @@ texto ficar limpo.
 |---|---|
 | Backend | Python 3.14 + FastAPI (assíncrono) |
 | Frontend | HTML/JS/CSS puro (sem framework) |
-| IA | Provedor plugável (`src/providers.py`): Gemini, Groq, Ollama local, Anthropic, DeepSeek, Kimi, Z.ai, OpenRouter |
+| IA | Provedor plugável (`src/providers.py`): Gemini, Groq, Ollama local, Anthropic, DeepSeek, Kimi, Z.ai, OpenRouter, custom (endpoint compatível com OpenAI) |
 | Fonte de dados | AnkiConnect porta 8765, deck `English_Series` |
 | Servidor | Uvicorn com hot-reload, porta `14567` |
 

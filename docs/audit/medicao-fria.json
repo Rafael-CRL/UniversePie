@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "timestamp": "2026-08-30 12:07",
+    "commit": "b9c31a9",
+    "mode": "quiz",
+    "runs": 1,
+    "n": 5,
+    "source": "direct",
+    "provider": "ollama/qwen3:8b",
+    "cards": "docs/audit/pool-exemplo.json",
+    "url": "http://localhost:14567",
+    "tag": "medicao-fria"
+  },
+  "summary": {
+    "batches_requested": 1,
+    "batches_failed": 0,
+    "items_audited": 5,
+    "items_flagged": 1,
+    "clean_rate": 0.8,
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 2,
+        "1": 2,
+        "2": 1,
+        "3": 0
+      },
+      "answer_position_top_share": 0.4,
+      "longest_option_is_answer": 0.0,
+      "quiz_types": {
+        "discrimination": 1,
+        "production": 1,
+        "interference": 1,
+        "polysemy": 1,
+        "contextual": 1
+      },
+      "strategy_coverage": "5/5",
+      "items": 5
+    }
+  },
+  "findings": [
+    {
+      "check": "ungrounded",
+      "severity": "error",
+      "message": "Sem card-fonte: `used_cards` veio vazio ou fora do range do pool.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 4
+    }
+  ]
+}
