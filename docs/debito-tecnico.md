@@ -8,18 +8,26 @@ aqui ficam defeitos e lacunas do que já existe.
 
 Última revisão: 2026-08-30.
 
-## As quatro correções de prompt pendentes
+## As cinco correções de prompt pendentes
 
-Agrupadas aqui porque são o próximo passo do projeto pela decisão
-[0013](decisoes/0013-ordem-de-execucao.md), e porque devem ser feitas e medidas
-juntas, contra `audit/baseline-*.json`.
+São o próximo passo do projeto pela decisão
+[0013](decisoes/0013-ordem-de-execucao.md), e devem ser feitas e medidas juntas,
+contra `audit/baseline-*.json`.
 
-| # | Defeito | Prompt |
-|---|---|---|
-| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | A rotação obrigatória garante que parte da sessão não seja n+1 | quiz |
-| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta quase nunca cai nas últimas posições | quiz |
-| [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | A numeração do pool vaza para a explicação | quiz |
-| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze |
+**Ordenadas por evidência, não por conveniência.** Na linha de base, o defeito
+está no quiz: **26 achados no quiz contra 11 no cloze.**
+
+| # | Defeito | Prompt | Evidência |
+|---|---|---|---|
+| [12](#12-exercício-que-não-se-ancora-no-card-do-usuário) | Exercício não ancorado no card do usuário | quiz | 5 `weak_grounding` + 1 `ungrounded` |
+| [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | A numeração do pool vaza para a explicação | quiz | 13 ocorrências — o mais frequente |
+| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta quase nunca cai nas últimas posições | quiz | 0/60 na última posição, 4 modelos |
+| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze | 7 ocorrências (reconfirmar) |
+| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | A rotação garante que parte da sessão não seja n+1 | quiz | estrutural |
+
+O item 12 vem primeiro por natureza, não por contagem: é o único que atinge
+diretamente a premissa do produto. Os outros produzem exercício ruim; ele produz
+exercício que não é deste projeto.
 
 Procedimento em `skills/prompt-review.md`. Mudar prompt exige confirmação do
 autor — ver `CLAUDE.md`.
@@ -324,6 +332,41 @@ candidato. Agora compara a frase antes e depois de preencher e só reporta a
 repetição que o candidato **introduziu**, com dois testes de regressão. O número
 6/56 foi medido com a versão antiga e pode estar inflado — reconfirmar na
 remedição.
+
+---
+
+## 12. Exercício que não se ancora no card do usuário
+
+**O que é.** O produto existe para gerar em cima do que o usuário já estudou. Duas
+formas de quebrar isso: o exercício não referencia card nenhum, ou referencia mas
+não tem nada em comum com ele.
+
+**Evidência.** `check_grounding` (`audit_exercises.py:186`) mede exatamente isso —
+a docstring dela diz *"a promessa do produto é gerar em cima do que o usuário já
+estudou"*. Na linha de base disparou **5 vezes**, todas no quiz:
+
+```
+Zero sobreposição léxica entre o que é testado
+  ('Pragmatic implication of a boss's message The team will be i…')
+  e os cards-fonte.
+```
+
+E `ungrounded` (severidade ERRO, `used_cards` vazio) disparou numa rodada de 5
+itens em 2026-08-30 — o exercício não se apoiava em card nenhum.
+
+**Impacto.** É o único defeito da lista que ataca a premissa em vez da execução.
+Um exercício com viés de posição ainda ensina alguma coisa do deck do usuário; um
+exercício não ancorado é conteúdo genérico de inglês, que é precisamente o que o
+`premissas.md` diz que o projeto não faz. E os outros quatro defeitos foram
+catalogados enquanto este, mais grave, não estava documentado em lugar nenhum.
+
+**A investigar antes de corrigir.** A contagem não separa duas causas com
+correções diferentes: o modelo ignorou o pool e inventou, ou o modelo usou o pool
+e o `used_cards` veio errado. A segunda é defeito de contrato, não de conteúdo.
+Ler os itens marcados no `.raw.json` antes de mexer no prompt.
+
+**Custo.** Baixo se for prompt. A instrução de ancorar existe; falta ser
+exigência verificável.
 
 ---
 

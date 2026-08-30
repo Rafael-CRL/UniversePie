@@ -11,9 +11,18 @@ arquivo:
   `roadmap.md`). Marcado como migrado, não apagado: apagar perde o rastro,
   manter sem marca faz alguém agir sobre coisa vencida.
 
+- **plano** — escrito *antes* da sessão, com objetivo e definição de pronto.
+  Consumido pela sessão que ele descreve e substituído pelo registro dela. É o
+  único tipo que deve ser apagado, porque cumpriu a função.
+
 A disciplina é a **migração**, não a marcação. Se o que a sessão produziu ainda
 não aterrissou num documento mantido, ela continua sustentando peso e não pode
 ser marcada como migrada.
+
+## Próxima sessão
+
+**`PLANO-qualidade-do-output.md`** — corrigir os prompts e baixar os defeitos
+medidos. É o que a branch `feat/card-quality-audit` existe para fazer.
 
 ## Linha de base vigente
 
