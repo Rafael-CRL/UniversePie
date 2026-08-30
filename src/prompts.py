@@ -49,6 +49,7 @@ Example: "Your boss emails: 'Going forward, let's loop in the whole team.' What 
 4. All questions must be written in English.
 5. Explanations must be concise, useful, and teach something the learner can retain. If relevant, mention the Portuguese interference or the common mistake.
 6. Each quiz must include a "used_cards" field: an array of 1-based card indices from the pool that were used to build that quiz. This lets the system trace the source.
+6b. Each quiz must include a "source_expression" field: the expression the quiz is anchored on, copied VERBATIM from the Front of one of the cards you listed in used_cards. Copy it exactly as written there — do not conjugate it, translate it, or rephrase it. The quiz itself should test a VARIATION of that expression (another sense, a derived form, a different particle, a different register); the anchor names where it came from, not what is being tested.
 7. Vary quiz types. Do not use the same type for consecutive quizzes.
 8. You may combine concepts from multiple cards in a single quiz.
 9. Prioritize concepts that have nuances, polysemy, or structural patterns over simple vocabulary.
@@ -61,6 +62,7 @@ Return a JSON object:
     {{
       "quiz_type": "discrimination | production | interference | polysemy | contextual",
       "concept": "Brief label of the concept being tested",
+      "source_expression": "the expression copied verbatim from a card's Front",
       "question": "The question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "answer_index": 0,

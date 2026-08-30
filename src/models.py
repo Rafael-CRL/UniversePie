@@ -9,6 +9,21 @@ class SourceCard(BaseModel):
 class QuizItem(BaseModel):
     quiz_type: str
     concept: str
+    # A expressão do pool em que este quiz se apoia, copiada do card. O cloze
+    # sempre teve `target_expression` e é por isso que dá para checá-lo de forma
+    # objetiva; o quiz declarava o que testa só em prosa (`concept`), e aí saber
+    # se ele nasceu de um card do usuário virava sobreposição de palavras.
+    #
+    # Nome diferente do cloze de propósito: lá `target_expression` é a resposta,
+    # e aqui é a ÂNCORA. O quiz existe para testar uma variação dela — outro
+    # sentido, forma derivada, troca de partícula. Chamar os dois de "target"
+    # convidaria a portar checagem de um para o outro invertendo o sentido.
+    #
+    # Opcional com default: campo novo que os modelos ainda não emitem de forma
+    # comprovada. Se fosse obrigatório, `build_items` descartaria o item inteiro
+    # e a falha sumiria em vez de virar número — foi exatamente o que aconteceu
+    # com `used_cards`. O auditor mede quem não declara.
+    source_expression: str = ""
     question: str
     options: list[str]
     answer_index: int

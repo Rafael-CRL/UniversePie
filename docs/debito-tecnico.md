@@ -220,9 +220,16 @@ crescente e observar onde a latência e a taxa de item descartado disparam.
 *"Brief label of the concept being tested"* (`prompts.py:64`). A IA inventa o
 rótulo a cada chamada. Nada normaliza, nada persiste.
 
-**Evidência.** `prompts.py:64` e `:118`. Dois exercícios sobre a mesma estrutura
+**Evidência.** `prompts.py:64` e `:122`. Dois exercícios sobre a mesma estrutura
 podem sair como "present perfect vs past perfect" e "tempos compostos", e o sistema
 não tem como saber que são a mesma coisa.
+
+**Parcialmente aliviado no quiz em 2026-08-30.** `QuizItem.source_expression`
+copia a expressão do card, então o quiz passou a ter uma chave estável para *de
+onde ele veio*. Não resolve o item: `concept` continua descrevendo *o que está
+sendo testado* em prosa livre, e é essa a chave que a trilha da
+[0008](decisoes/0008-trilha-e-espelho.md) precisa. Alivia a agregação por
+expressão de origem; não a agregação por conceito.
 
 **Impacto.** A trilha por conceito descrita na
 [0008](decisoes/0008-trilha-e-espelho.md) é **impossível** com o modelo atual,
@@ -238,7 +245,7 @@ identidade e entrega rótulo.
 
 ## 8. A rotação obrigatória das estratégias dilui a premissa
 
-**O que é.** A regra 7 do prompt de quiz (`prompts.py:52`) manda variar a
+**O que é.** A regra 7 do prompt de quiz (`prompts.py:53`) manda variar a
 estratégia e proíbe tipos iguais consecutivos.
 
 **Evidência.** Das cinco estratégias, `polysemy` (`prompts.py:35`) e
@@ -255,9 +262,28 @@ variação nenhuma, e a métrica de auditoria registra isso como saúde.
 "flashcards disfarçados" da Alpha v2. A correção precisa preservar o antídoto e
 remover a diluição — não simplesmente remover a regra.
 
-**Custo.** Baixo, mas exige remedição contra a linha de base. É a quarta correção
-de prompt pendente; as outras três estão em
-`sessoes/2026-08-29-auditoria.md`.
+**É o único item do índice sem número.** Os outros quatro têm contagem medida;
+este está lá como "estrutural", porque nada no auditor sabe dizer se um exercício
+apresenta variação ou reapresenta o sentido que o card já ensina — que é a
+premissa n+1 inteira.
+
+**Caminho para medi-lo, registrado em 2026-08-30 e não implementado.** O mesmo
+movimento que tornou o item 12 exato serviria aqui: fazer o quiz declarar o
+sentido do card (`sense_on_card`) e o sentido testado (`sense_tested`), ou um
+enum `variation_type`. Declarar os dois iguais é flashcard disfarçado, e é
+detectável. Dá para cruzar com `quiz_type`: `polysemy` e `discrimination`
+implicam sentido diferente, então declarar sentidos iguais nesses tipos é
+contradição.
+
+A ressalva honesta: isso é **declarativo** — verifica o modelo contra si mesmo,
+pega contradição, não pega erro. Diferente do `source_expression`, que é
+verificável contra o card. Ainda assim é a única via visível para tirar este item
+do "estrutural", e o custo é dois campos. Decidir quando o item 12 estiver medido,
+com dado na mão em vez de no plano.
+
+**Custo.** Baixo para o prompt, mas exige remedição contra a linha de base. É a
+quinta correção de prompt pendente — todas as cinco estão no índice no topo deste
+arquivo.
 
 ---
 
@@ -381,6 +407,17 @@ Um exercício com viés de posição ainda ensina alguma coisa do deck do usuár
 exercício não ancorado é conteúdo genérico de inglês, que é precisamente o que o
 `premissas.md` diz que o projeto não faz. E os outros quatro defeitos foram
 catalogados enquanto este, mais grave, não estava documentado em lugar nenhum.
+
+**A medida ficou exata em 2026-08-30.** O quiz passou a declarar
+`source_expression` — a expressão do pool em que ele se apoia, copiada do card.
+Antes o quiz dizia o que testava só em prosa (`concept`, item 7), então ancoragem
+só dava para estimar por sobreposição de palavras, que é o que `weak_grounding`
+faz. Agora o auditor pergunta o exato: a âncora existe no card citado
+(`anchor_not_in_source_card`, ERRO) e o exercício tem alguma relação com a âncora
+que ele mesmo declarou (`anchor_absent_from_exercise`, ALERTA). Quem não declara
+vira `empty_source_expression`. A checagem de "aparece no exercício" é frouxa de
+propósito: o quiz **deve** testar uma variação da âncora, e exigir a expressão
+inteira reprovaria a própria premissa.
 
 **A investigar antes de corrigir.** A contagem não separa duas causas com
 correções diferentes: o modelo ignorou o pool e inventou, ou o modelo usou o pool

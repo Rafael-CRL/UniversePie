@@ -34,6 +34,7 @@ def quiz(**overrides):
     item = {
         "quiz_type": "discrimination",
         "concept": "settle into vs settle for",
+        "source_expression": "settle into",
         "question": "After the move, it took her weeks to _____ her new routine.",
         "options": ["settle into", "settle for", "settle on", "settle down"],
         "answer_index": 0,
@@ -74,6 +75,59 @@ def test_detects_card_number_leak_in_the_question():
 def test_card_leak_in_the_explanation_is_only_a_warning():
     findings = check_quiz_item(quiz(explanation="'Settle into' (Card 3) is about adapting to a new place."), "quiz", 1, 1)
     assert "meta_leak_explanation" in checks(findings, WARN)
+
+
+def test_flags_a_quiz_that_does_not_declare_its_anchor():
+    """Sem `source_expression` não dá para saber, de forma exata, se o quiz nasceu
+    de um card do usuário — sobra a sobreposição de palavras, que é estimativa.
+    É o campo que o cloze sempre teve e o quiz não (item 12)."""
+    findings = check_quiz_item(quiz(source_expression=""), "quiz", 1, 1)
+    assert "empty_source_expression" in checks(findings, WARN)
+
+
+def test_flags_an_anchor_that_is_not_in_the_source_card():
+    """Âncora que não existe no card citado foi inventada pelo modelo, e aí o
+    `used_cards` que vem junto não prova ancoragem nenhuma."""
+    findings = check_quiz_item(quiz(source_expression="pull yourself together"), "quiz", 1, 1)
+    assert "anchor_not_in_source_card" in checks(findings, ERROR)
+
+
+def test_a_variation_of_the_anchor_is_not_penalised():
+    """O quiz DEVE testar uma variação da âncora — outro sentido, forma derivada.
+    A checagem é frouxa de propósito: exigir a expressão inteira no enunciado
+    reprovaria exatamente o que a premissa n+1 pede."""
+    findings = check_quiz_item(
+        quiz(
+            question="Which sentence uses 'settle' to mean accepting something less than ideal?",
+            options=[
+                "She settled for a smaller flat.",
+                "The dust settled on the shelf.",
+                "They settled the bill quickly.",
+                "He settled down after the move.",
+            ],
+            answer_index=0,
+        ),
+        "quiz",
+        1,
+        1,
+    )
+    assert "anchor_absent_from_exercise" not in checks(findings)
+    assert "anchor_not_in_source_card" not in checks(findings)
+
+
+def test_flags_an_exercise_with_nothing_to_do_with_its_own_anchor():
+    """Declarou 'settle into' e construiu um quiz sobre 'break the ice'."""
+    findings = check_quiz_item(
+        quiz(
+            question="What does 'break the ice' mean in a first meeting?",
+            options=["To start a conversation", "To damage something", "To cool a drink", "To end a meeting"],
+            answer_index=0,
+        ),
+        "quiz",
+        1,
+        1,
+    )
+    assert "anchor_absent_from_exercise" in checks(findings, WARN)
 
 
 def test_detects_answer_repeated_inside_the_question():

@@ -250,6 +250,34 @@ def check_quiz_item(item: dict, mode: str, batch: int, index: int) -> list[Findi
     if len(explanation.strip()) < 40:
         col.add("thin_explanation", INFO, "Explicação curta demais para ensinar algo.")
 
+    # `source_expression` é a âncora declarada: a expressão do pool em que este
+    # quiz se apoia. Enquanto o quiz não a declarava, saber se ele nasceu de um
+    # card do usuário só dava para estimar por sobreposição de palavras — item 12
+    # do debito-tecnico.md. Com ela as perguntas viram exatas.
+    anchor = str(item.get("source_expression") or "").strip()
+    if not anchor:
+        col.add("empty_source_expression", WARN, "O quiz não declarou de qual expressão do pool ele nasceu.")
+    else:
+        # A âncora tem que existir no card citado. Se não existe, o modelo a
+        # inventou, e o `used_cards` que a acompanha não prova ancoragem nenhuma.
+        if not contains_phrase(source_text(item), anchor):
+            col.add(
+                "anchor_not_in_source_card",
+                ERROR,
+                f"A âncora declarada ('{anchor}') não aparece no card-fonte.",
+            )
+        # Deliberadamente frouxo: basta uma palavra de conteúdo em comum. O quiz
+        # DEVE testar uma variação da âncora — outro sentido, forma derivada —
+        # então exigir a expressão inteira no enunciado reprovaria justamente o
+        # que a premissa n+1 pede. O que isto pega é o exercício que não tem
+        # nada a ver com a âncora que ele mesmo declarou.
+        elif not (content_tokens(anchor) & content_tokens(f"{question} {' '.join(str(o) for o in options)}")):
+            col.add(
+                "anchor_absent_from_exercise",
+                WARN,
+                f"Nada da âncora ('{anchor}') aparece no enunciado nem nas opções.",
+            )
+
     # O enunciado entra na âncora: em quiz `contextual` a expressão do card
     # aparece na situação descrita, e a resposta certa é uma paráfrase.
     check_grounding(col, item, f"{item.get('concept', '')} {answer} {question}")

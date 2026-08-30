@@ -35,6 +35,18 @@ Congelar um pool (`--save-cards`), rodar quiz e cloze, e **ler os exercícios**,
 não só o `clean_rate`. Sem isso a sessão corrige defeito de planilha em vez de
 defeito de exercício.
 
+Dois grupos de material, decididos em 2026-08-30:
+- **Grupo 1 (agora):** pool congelado e ideal. Mede qualidade de prompt sem que
+  variação de card entre na conta.
+- **Grupo 2 (depois):** material real do deck — back vazio, back em português,
+  front como frase inteira. Outra pergunta, outra sessão.
+
+**A linha de base de 2026-08-29 não serve de comparação para o grupo 1**: ela
+sorteou pool a cada rodada, e desde 2026-08-30 o quiz tem um campo que ela não
+mede (`source_expression`). Reanalisá-la hoje soma 62 `empty_source_expression`,
+um por quiz — isso é o campo novo aparecendo, não regressão. A primeira coisa a
+fazer é gravar uma linha de base nova no pool congelado.
+
 **2. Investigar o item 12 antes de corrigi-lo.**
 A contagem de grounding não separa "o modelo inventou, ignorando o pool" de "o
 modelo usou o pool e o `used_cards` veio errado". São correções diferentes — uma

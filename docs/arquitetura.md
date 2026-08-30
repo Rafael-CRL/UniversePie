@@ -55,6 +55,13 @@ Definidos em `src/models.py`: `SourceCard`, `QuizItem`/`QuizSession`,
 `ClozeItem`/`ClozeSession`. Validadores semânticos garantem 4 opções por quiz,
 `answer_index` em 0–3 e `commonality` restrito a `common`/`moderate`/`niche`.
 
+`QuizItem.source_expression` (2026-08-30) declara a expressão do pool em que o
+quiz se apoia, copiada do card. É o análogo do `target_expression` do cloze com
+sentido diferente de propósito: no cloze é a **resposta**, no quiz é a **âncora**
+— o exercício existe para testar uma variação dela. É opcional com default vazio,
+para que o item não declarado vire número no auditor em vez de ser descartado
+pelo `build_items`.
+
 Modificar esses modelos quebra contrato com o frontend e exige confirmação — ver
 `CLAUDE.md`.
 
