@@ -93,3 +93,25 @@ o que só a lista fechada torna amostrável.
 
 Pela decisão `0013`: corrigir os quatro prompts e remedir contra
 `audit/baseline-*.json`. Depois, sessão de planejamento do núcleo n+1.
+
+## Adendo — timeout do Ollama, medido
+
+O `OllamaProvider` reservava 900s. O número não tinha origem registrada e não
+sobreviveu à medição, feita nesta máquina em 2026-08-30 com o pool de exemplo:
+
+| Cenário | Tempo |
+|---|---|
+| `qwen3:8b` (5,2 GB) — só carregar na memória, frio | 13,2s |
+| `qwen3:8b` — requisição trivial, quente | 0,1s |
+| `qwen3:8b` — frio + sessão completa de 5 exercícios | 21,8s |
+| `gemma4:e4b` (9,6 GB) — frio + sessão completa | 45,1s |
+
+Pior caso medido: **45s**. O teto era 20x isso. Passou para **180s** — 4x o pior
+caso, e falha em 3 minutos quando a requisição trava de verdade, em vez de 15.
+
+Timeout é teto, não espera: nada aguarda 180s se o modelo responde em 22s. O que
+um teto alto demais custa é demorar a desistir de algo travado.
+
+A ressalva que justifica manter folga: modelo bem maior que não caiba na memória
+cai para CPU e fica ordens de grandeza mais lento. Nenhum instalado aqui hoje —
+se acontecer, `AI_TIMEOUT_S` e `--timeout` existem para isso.

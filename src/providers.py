@@ -352,7 +352,13 @@ class OllamaProvider(Provider):
     api_key_env = None
     # Modelo local não tem rate limit, mas tem throughput: uma sessão de 5
     # exercícios pode passar de um minuto em hardware modesto.
-    default_timeout_s = 900.0
+    # 180s vem de medição, não de palpite (2026-08-30, ver docs/sessoes/):
+    # carregar o qwen3:8b frio custa 13s, e uma sessão de 5 exercícios com o
+    # modelo frio custa 22s no qwen3:8b e 45s no gemma4:e4b — o pior caso
+    # medido. 180s cobre 4x isso e ainda falha em 3 minutos quando trava de
+    # verdade. Modelo bem maior que não caiba na memória pode precisar de mais:
+    # é para isso que existem AI_TIMEOUT_S e --timeout.
+    default_timeout_s = 180.0
 
     def __init__(self, model: str | None = None, timeout_s: float | None = None):
         super().__init__(model, timeout_s)
