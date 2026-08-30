@@ -318,10 +318,12 @@ sem resposta certa, e corrigir o matching não resolve.
 **Custo.** Baixo. Exigir no prompt que a expressão-alvo encaixe gramaticalmente na
 frase construída.
 
-**Ressalva sobre a checagem `does_not_fit_the_blank`:** o ultrareview de
-2026-08-30 achou nela um falso positivo — ela varre a frase inteira em busca de
-palavra repetida, então "had had" ou "that that" legítimos na frase original
-disparam contra qualquer candidato. Corrigir antes de confiar no número.
+**Ressalva resolvida em 2026-08-30.** A checagem `does_not_fit_the_blank` varria a
+frase inteira, então "had had" ou "that that" legítimos disparavam contra qualquer
+candidato. Agora compara a frase antes e depois de preencher e só reporta a
+repetição que o candidato **introduziu**, com dois testes de regressão. O número
+6/56 foi medido com a versão antiga e pode estar inflado — reconfirmar na
+remedição.
 
 ---
 

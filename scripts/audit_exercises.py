@@ -256,6 +256,15 @@ def check_quiz_item(item: dict, mode: str, batch: int, index: int) -> list[Findi
     return col.findings
 
 
+def _adjacent_repeats(text: str) -> set[str]:
+    """Palavras adjacentes repetidas no texto, em minúsculas ('had had' -> {'had'}).
+
+    Usado para comparar a frase antes e depois de preencher a lacuna: só interessa
+    a repetição que o candidato introduziu.
+    """
+    return {m.group(1).lower() for m in re.finditer(r"\b(\w+)\s+\1\b", text, re.IGNORECASE)}
+
+
 def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Finding]:
     col = Collector(mode, batch, index)
 
@@ -283,18 +292,25 @@ def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Find
         col.add("target_in_hint", ERROR, f"A dica entrega a resposta ('{target}').")
     # A avaliação é por igualdade de string: se a expressão não encaixa na frase
     # exatamente como está escrita, o exercício marca de errado quem acertou.
+    #
+    # Só conta repetição que o candidato criou. A frase pode já ter uma repetição
+    # legítima — "they had had lunch", "o problema é que that clause" — e cobrar
+    # isso do candidato reprova exercício bom. Como a checagem é severidade ERRO e
+    # --fail-on error é o padrão, o falso positivo barra mudança de prompt boa.
+    baseline_repeats = _adjacent_repeats(re.sub(r"_{2,}", " ", sentence))
     for candidate, role, severity in (
         [(target, "target_expression", ERROR)]
         + [(str(a), "acceptable_alternatives", WARN) for a in alternatives]
     ):
         filled = re.sub(r"_{2,}", candidate, sentence, count=1)
-        repeated = re.search(r"\b(\w+)\s+\1\b", filled, re.IGNORECASE)
+        introduced = _adjacent_repeats(filled) - baseline_repeats
+        repeated = next(iter(sorted(introduced)), None)
         if repeated and candidate:
             col.add(
                 "does_not_fit_the_blank",
                 severity,
                 f"'{candidate}' na lacuna repete uma palavra da frase "
-                f"('{repeated.group(1)} {repeated.group(1)}'), em {role}.",
+                f"('{repeated} {repeated}'), em {role}.",
             )
 
     # 'take upon yourself' numa frase sobre 'she' produz "She was hesitant to
@@ -633,14 +649,14 @@ async def collect_direct(
                     if attempt < retries:
                         backoff = max(cooldown, 5) * (attempt + 1)
                         print(f"  falhou ({record['error']}); nova tentativa em {backoff}s", flush=True)
-                        time.sleep(backoff)
+                        await asyncio.sleep(backoff)
                     else:
                         print(f"  falhou definitivamente: {record['error']}", flush=True)
 
             results.append(record)
             if i < runs - 1 and "payload" in record and cooldown:
                 print(f"  aguardando {cooldown}s (RPM)...", flush=True)
-                time.sleep(cooldown)
+                await asyncio.sleep(cooldown)
     finally:
         if fixed_cards is None:
             await anki_client.shutdown()
@@ -1080,7 +1096,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--url", default=DEFAULT_BASE_URL)
     parser.add_argument("--cooldown", type=int, default=25, help="segundos entre rodadas, por causa do RPM")
     parser.add_argument("--retries", type=int, default=2, help="novas tentativas por rodada que falhar")
-    parser.add_argument("--timeout", type=float, default=120.0)
+    # Sem default: o provedor decide. O Ollama reserva 900s porque modelo local
+    # frio leva mais tempo para carregar na VRAM, e um default aqui apagava isso.
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="timeout por requisição em segundos (padrão: o do provedor)",
+    )
     parser.add_argument("--out-dir", default="docs/audit")
     parser.add_argument("--tag", default="", help="nome do run (ex: prompt-v4) — vira o nome dos arquivos")
     parser.add_argument("--from-raw", help="reanalisa um .raw.json existente, sem chamar a API")

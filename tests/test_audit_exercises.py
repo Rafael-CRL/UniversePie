@@ -194,6 +194,38 @@ def test_detects_alternative_that_does_not_fit_the_blank():
     assert "does_not_fit_the_blank" in checks(findings, WARN)
 
 
+def test_ignores_repetition_that_was_already_in_the_sentence():
+    """A frase pode ter repetição legítima — 'had had' no mais-que-perfeito. Só
+    conta a repetição que o candidato introduziu; cobrar a que já existia reprova
+    exercício bom, e como a checagem é ERRO isso barra mudança de prompt boa."""
+    findings = check_cloze_item(
+        cloze(
+            sentence="By the time we arrived, they had had lunch and were ready to _____.",
+            target_expression="head out",
+            acceptable_alternatives=["take off"],
+        ),
+        "cloze",
+        1,
+        1,
+    )
+    assert "does_not_fit_the_blank" not in checks(findings)
+
+
+def test_still_flags_repetition_the_candidate_creates_in_a_sentence_that_repeats():
+    """A frase tem 'had had' legítimo E o candidato duplica outra palavra. A
+    repetição pré-existente não pode mascarar a que o candidato criou."""
+    findings = check_cloze_item(
+        cloze(
+            sentence="They had had enough, and it _____ that nobody was listening.",
+            target_expression="it turned out",
+        ),
+        "cloze",
+        1,
+        1,
+    )
+    assert "does_not_fit_the_blank" in checks(findings, ERROR)
+
+
 def test_detects_target_in_the_wrong_person():
     """'take upon yourself' numa frase sobre 'she' sai agramatical quando
     preenchida, e não existe resposta certa possível."""
