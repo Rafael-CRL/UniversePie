@@ -111,7 +111,7 @@ fora" para *tell off*), penalizado por citar "Card 2" numa explicação, defeito
 cosmético que o aluno vê depois de responder.
 
 **Consequência: não há como afirmar hoje se um modelo pequeno é suficiente para
-o projeto.** A dimensão que separaria não é medida. Ver `DEBITO_TECNICO.md`
+o projeto.** A dimensão que separaria não é medida. Ver `debito-tecnico.md`
 item 4 para as duas heurísticas determinísticas testadas e rejeitadas, com os
 números. `--sample N` exporta amostra cega para revisão humana, que é o
 caminho restante e também o que calibraria um LLM-juiz depois.
@@ -135,6 +135,14 @@ prompt de cloze tem um defeito real (achado 3) mas de outra natureza. Cobertura
 das 5 estratégias foi 5/5 em todos os modelos, e `longest_option_is_answer`
 ficou entre 0,20 e 0,27 contra 0,25 esperado por acaso — não há pista pelo
 tamanho da alternativa.
+
+> **Revisto em 2026-08-30.** A cobertura 5/5 está registrada acima como sinal de
+> saúde e **não é**. Ela mede variedade, não qualidade: duas das cinco
+> estratégias (`production`, `interference`) testam o sentido já conhecido, então
+> obedecer a rotação garante que parte da sessão não apresente variação nenhuma —
+> o oposto da premissa do projeto, que só foi documentada no dia seguinte. Ver
+> `debito-tecnico.md` item 8 e `decisoes/0002-rotacao-de-estrategias.md`. O resto
+> do achado segue válido.
 
 ---
 
@@ -164,6 +172,10 @@ de operação, não defeito (ver `CLAUDE.md`).
    (achado 2), garantir que a expressão-alvo encaixe na frase do cloze
    (achado 3). Nenhuma foi feita — `CLAUDE.md` exige confirmação para mexer em
    prompt.
+   > **São quatro, não três** (2026-08-30). A quarta é a rotação obrigatória das
+   > estratégias. E as três acima migraram para `debito-tecnico.md`, itens 9, 10 e
+   > 11 — **é lá que estão as quatro juntas, com o índice no topo do arquivo.**
+   > Trabalhar a partir de lá, não desta lista.
 2. **Medir de novo depois de corrigir** e comparar com
    `--compare docs/audit/baseline-*.json`. A linha de base existe justamente
    para isso.
@@ -173,6 +185,10 @@ de operação, não defeito (ver `CLAUDE.md`).
    repositório, embora seja descrito pelo autor como central. O vizinho mais
    próximo é `AI_RULES.md:10` ("âncora no conhecimento existente"). Pendente:
    sessão de `/grill-me` para extrair e então documentar.
+   > **Cumprido, e a premissa era outra** (2026-08-30). O termo estava documentado
+   > fora do repositório, com definição diferente, e tinha sido aposentado. Ver
+   > `premissas.md` — e não usar "âncora no conhecimento existente" como
+   > equivalente de n+1: é o parente mais próximo que sobrou, não a definição.
 5. **Documentação desatualizada por commits desta sessão**: `AI_RULES.md:3`
    ainda diz "qualquer prompt enviado ao Gemini"; `CONTEXT.md:65-66` descreve o
    fluxo como se Gemini fosse o único provedor.
