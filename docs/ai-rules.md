@@ -1,12 +1,21 @@
 # UniversePie — Regras de Geração de Conteúdo
 
-Este arquivo governa qualquer prompt enviado ao Gemini. Leia antes de modificar prompts existentes ou criar novos.
+**Última revisão:** 2026-08-30
+
+Este arquivo governa qualquer prompt enviado ao provedor de IA, seja ele qual for.
+Leia antes de modificar prompts existentes ou criar novos. O *porquê* das regras
+está em `premissas.md`.
 
 ---
 
 ## Princípios
 
 - A IA opera sobre o banco de dados do usuário — não gera conteúdo genérico
+- **Apresentar variação é o objetivo, não efeito colateral.** O exercício reforça
+  o que o usuário já sabe *e* mostra outra possibilidade de uso daquilo: outro
+  sentido, outra forma, outra partícula, outro registro. É a premissa n+1 — ver
+  `premissas.md`. Um exercício que só testa o sentido já conhecido é "n", e o
+  prompt não deve produzir só isso
 - Âncora no conhecimento existente: o que o usuário já domina é base, não barreira
 - Nuances são condicionais: só aparecem quando genuinamente existem. Não forçar nuances onde não há
 - Reconhecimento passivo é insuficiente: exercícios devem testar produção ativa
@@ -30,6 +39,13 @@ Se o significado é óbvio pelo contexto ou tradução direta, cortar a explica�
 
 **Família de palavras**
 Exemplos cobrem formas derivadas e variações temporais: *settle, settled, settling, settlement*.
+
+Esta regra vale para **conteúdo de card**. Como exercício — pedir que o usuário
+produza a forma correta dentro de uma frase — ela está **bloqueada** pelo item 5
+do `debito-tecnico.md`: a avaliação do cloze marca conjugação correta como erro.
+Adicionar o exercício antes de corrigir o matching cria a pior combinação
+possível, um exercício que testa exatamente a dimensão que o avaliador não sabe
+avaliar. Ordem: corrigir o matching, depois o exercício.
 
 **Registro**
 Identificar claramente: informal, vulgar, técnico, sarcástico.
@@ -57,6 +73,12 @@ Mencionar apenas quando for genuinamente útil para fixar contexto ou significad
 | `interference` | Distratores baseados em traduções literais do português (L1) |
 | `polysemy` | Discernimento contextual de múltiplos significados da mesma raiz |
 | `contextual` | Implicações pragmáticas e de registro (sarcasmo, formalidade, intenção) |
+
+Nem todas apresentam variação. `polysemy` e `discrimination` apresentam — e são
+condicionais ao pool conter o material necessário. `production` e `interference`
+testam o sentido já conhecido. A rotação obrigatória entre as cinco, por isso,
+garante que parte da sessão não seja n+1: ver
+[0002](decisoes/0002-rotacao-de-estrategias.md), com revisão pendente.
 
 ---
 

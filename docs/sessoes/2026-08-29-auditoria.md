@@ -3,6 +3,12 @@
 Registro factual do que foi construído, medido e concluído. Escrito para quem
 retomar o trabalho sem ter participado da sessão.
 
+> **Nota de 2026-08-30.** Os caminhos citados aqui são os desta data:
+> `CONTEXT.md` virou `arquitetura.md` + `roadmap.md` + `premissas.md`,
+> `AI_RULES.md` virou `ai-rules.md`, `DEBITO_TECNICO.md` virou
+> `debito-tecnico.md`. As pendências ao final foram parcialmente resolvidas — ver
+> a nota de fechamento.
+
 Branch: `feat/card-quality-audit`, publicada em `origin`. 107 testes passando.
 
 ---
@@ -97,7 +103,7 @@ Este é o achado mais importante e o que mais limita conclusões.
 No mesmo tipo de exercício (`interference`), o `gpt-oss-20b` — melhor nota da
 sessão, 93% — produziu as alternativas "out of your depth" / "out of depth" /
 "out of your depthness" / "out of depthness": palavras inventadas, nenhuma
-interferência do português, exatamente o que o `AI_RULES.md` proíbe. O Gemini —
+interferência do português, exatamente o que o `ai-rules.md` proíbe. O Gemini —
 73% — produziu a única armadilha de L1 legítima da rodada ("contar sua mãe
 fora" para *tell off*), penalizado por citar "Card 2" numa explicação, defeito
 cosmético que o aluno vê depois de responder.
@@ -169,6 +175,24 @@ de operação, não defeito (ver `CLAUDE.md`).
    ainda diz "qualquer prompt enviado ao Gemini"; `CONTEXT.md:65-66` descreve o
    fluxo como se Gemini fosse o único provedor.
 6. **Revisão de código** da branch (`/code-review`), que nunca passou por uma.
+
+---
+
+## Fechamento — 2026-08-30
+
+- **Item 1** passou de três para **quatro** correções de prompt. A quarta é a
+  regra 7 (rotação obrigatória das estratégias), que dilui a premissa n+1 — ver
+  `debito-tecnico.md` item 8 e `decisoes/0002-rotacao-de-estrategias.md`.
+- **Item 4 cumprido.** A sessão de `/grill-me` aconteceu e produziu
+  `premissas.md`, mais 13 ADRs. Com uma descoberta: o termo **estava** documentado
+  — em `historico/planejamento-geral.md`, com outra definição, e foi
+  deliberadamente aposentado na revisão seguinte. A afirmação "não aparece em
+  nenhum arquivo do repositório" era verdadeira quanto ao repositório e falsa
+  quanto ao projeto. Ver `2026-08-30-premissas.md`.
+- **Item 5 cumprido.**
+- **Item 6 cumprido.** O ultrareview da branch voltou com 6 achados, todos `nit`.
+- Ressalva do achado 6 desta sessão: a cobertura 5/5 das estratégias foi lida como
+  saúde e é, em parte, a diluição da premissa. Ver o ADR `0002`.
 
 ---
 

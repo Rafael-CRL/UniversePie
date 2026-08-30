@@ -333,7 +333,7 @@ def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Find
     elif len(alternatives) > 3:
         col.add("too_many_alternatives", INFO, f"{len(alternatives)} alternativas (o prompt pede até 3).")
 
-    # Regra do docs/AI_RULES.md que os modelos Pydantic não conseguem cobrir.
+    # Regra do docs/ai-rules.md que os modelos Pydantic não conseguem cobrir.
     if commonality and commonality != "common" and not context_note:
         col.add("missing_context_note", ERROR, f"commonality='{commonality}' exige context_note explicando o porquê.")
     if commonality == "common" and context_note:

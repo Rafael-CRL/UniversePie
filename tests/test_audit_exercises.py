@@ -159,7 +159,7 @@ def test_detects_hint_spelling_the_first_letter():
 
 
 def test_non_common_expression_requires_a_context_note():
-    """Regra do docs/AI_RULES.md que os validadores Pydantic não cobrem."""
+    """Regra do docs/ai-rules.md que os validadores Pydantic não cobrem."""
     findings = check_cloze_item(cloze(commonality="niche", context_note=""), "cloze", 1, 1)
     assert "missing_context_note" in checks(findings, ERROR)
 

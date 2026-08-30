@@ -1,8 +1,28 @@
 # UniversePie
 
-Ferramenta web local de aprendizado de inglês via sentence mining. A IA opera como camada de inteligência sobre o banco de dados do usuário — não gera conteúdo genérico, gera exercícios ancorados no que o usuário já estudou no Anki.
+Ferramenta web local de aprendizado de inglês via sentence mining, para quem está
+entre B1 e B2 e já passou do vocabulário básico.
 
 **Estado:** Alpha — funcional, em desenvolvimento ativo.
+
+## O problema
+
+Uma expressão raramente tem um sentido só. *Run* é correr, gerenciar e colocar
+para funcionar, e ainda aparece em *run out of time*. *Flip* vai de virar até
+convencer um cúmplice a delatar. Essas variações — outros sentidos, formas
+derivadas, mudanças de partícula, registro — normalmente são absorvidas por
+**milhares de horas de input**. Ninguém as ensina de forma direta.
+
+A aposta do UniversePie é que esse caminho pode ser encurtado se as variações
+forem mostradas explicitamente, ancoradas no que o usuário já estudou. É a
+premissa que o projeto chama de **n+1** — a magnitude não é literal.
+
+O que a ferramenta evita, por decisão: fazer o usuário exercitar o que ele já
+sabe. Aplicativos de trilha erram ao estimar o nível e transformam o estudo em
+tédio; aqui a medida do que o usuário sabe é acumulada pelo uso, e a trilha mostra
+onde ele está sem ditar por onde ir.
+
+Detalhes em [`docs/premissas.md`](docs/premissas.md).
 
 ## Stack
 
@@ -63,11 +83,16 @@ Modelos menores costumam cercar o JSON em ```` ```json ````, narrar antes dele o
 pytest
 ```
 
-Cobre as partes que não dependem de Anki nem Gemini rodando: sanitização de HTML, validadores dos modelos Pydantic, o mapeamento `used_cards` → `source_cards` e as checagens do auditor de exercícios.
+Cobre as partes que não dependem de Anki nem de provedor de IA rodando: sanitização de HTML, validadores dos modelos Pydantic, o mapeamento `used_cards` → `source_cards` e as checagens do auditor de exercícios.
 
 ## Auditoria de qualidade dos exercícios
 
 `scripts/audit_exercises.py` coleta sessões reais da API e roda checagens determinísticas sobre cada exercício gerado: vazamento da mecânica interna (`Card 6`, "from the cards"), resposta entregue no enunciado ou na dica, reconhecimento passivo onde o prompt exige produção ativa, exercício sem card-fonte, `context_note` faltando em expressão não-`common`, viés de posição e de tamanho da resposta correta, cobertura das 5 estratégias de quiz.
+
+Uma ressalva sobre a última: cobertura 5/5 é medida de variedade, não de
+qualidade. A rotação obrigatória das estratégias tem revisão pendente, porque
+garante que parte da sessão não apresente variação nenhuma — ver
+[`docs/decisoes/0002-rotacao-de-estrategias.md`](docs/decisoes/0002-rotacao-de-estrategias.md).
 
 ```bash
 # via HTTP: audita o servidor rodando (precisa de Anki aberto)
@@ -106,7 +131,7 @@ O consumo de tokens é capturado de todos os provedores (`usage` nos compatívei
 python scripts/audit_exercises.py --provider groq --sample 20 --tag revisao
 ```
 
-Exporta 20 exercícios embaralhados de todos os provedores do run, sem indicar quem gerou cada um, e grava o gabarito em arquivo separado. Existe porque o auditor mede conformidade com regras, não valor pedagógico, e as duas coisas divergem — ver o item 4 de [`docs/DEBITO_TECNICO.md`](docs/DEBITO_TECNICO.md).
+Exporta 20 exercícios embaralhados de todos os provedores do run, sem indicar quem gerou cada um, e grava o gabarito em arquivo separado. Existe porque o auditor mede conformidade com regras, não valor pedagógico, e as duas coisas divergem — ver o item 4 de [`docs/debito-tecnico.md`](docs/debito-tecnico.md).
 
 Cada run escreve três arquivos em `docs/audit/`: `.md` (leitura, com a resposta correta marcada), `.json` (findings e estatísticas, para comparar versões de prompt) e `.raw.json` (respostas cruas da API). O script sai com código != 0 quando encontra findings de severidade ERRO — use como portão antes de aceitar uma mudança de prompt.
 
@@ -115,7 +140,7 @@ Cada run escreve três arquivos em `docs/audit/`: `.md` (leitura, com a resposta
 | Rota | Método | Descrição |
 |---|---|---|
 | `/` | GET | Serve o frontend |
-| `/api/status` | GET | Diagnóstico: Anki conectado, deck encontrado, `GEMINI_API_KEY` configurada |
+| `/api/status` | GET | Diagnóstico: Anki conectado, deck encontrado, provedor de IA configurado |
 | `/api/quiz-session?n=5` | GET | Gera `n` quizzes de múltipla escolha |
 | `/api/cloze-session?n=5` | GET | Gera `n` exercícios cloze (preenchimento livre) |
 
@@ -127,20 +152,26 @@ src/
   config.py         variáveis de ambiente e constantes
   models.py         schemas Pydantic (Quiz*, Cloze*, SourceCard)
   anki_client.py    integração com AnkiConnect (busca e parsing de cards)
-  ai_client.py      integração com o Gemini (chamadas de geração)
-  prompts.py        prompts enviados ao Gemini
+  ai_client.py      chamada de geração e recuperação de JSON malformado
+  providers.py      provedor de IA plugável (Gemini, Groq, Ollama, Anthropic, OpenAI-compat)
+  prompts.py        prompts enviados ao provedor
   services.py       mapeamento de source_cards + validação dos itens gerados
   routers/          endpoints (quiz, cloze, status)
   static/           frontend (HTML/JS/CSS puro)
 tests/        testes
 scripts/      utilitários (auditoria de qualidade dos exercícios)
-docs/         contexto e regras para agentes de IA
 skills/       procedimentos reutilizáveis para tarefas recorrentes
+docs/         premissas, arquitetura, decisões, débito técnico e histórico
 ```
 
 ## Documentação
 
-- [`docs/CONTEXT.md`](docs/CONTEXT.md) — contexto do projeto, fluxo de dados, modelos e backlog
-- [`docs/AI_RULES.md`](docs/AI_RULES.md) — regras para geração de conteúdo pela IA
-- [`docs/DEBITO_TECNICO.md`](docs/DEBITO_TECNICO.md) — defeitos e lacunas conhecidos, com a evidência de cada um
-- [`CLAUDE.md`](CLAUDE.md) — instruções para agentes de IA trabalhando neste repositório
+- [`docs/premissas.md`](docs/premissas.md) — por que o projeto existe, para quem, e o que conta como sucesso
+- [`docs/arquitetura.md`](docs/arquitetura.md) — fluxo de dados, endpoints e contratos
+- [`docs/ai-rules.md`](docs/ai-rules.md) — regras para geração de conteúdo pela IA
+- [`docs/roadmap.md`](docs/roadmap.md) — features não construídas
+- [`docs/debito-tecnico.md`](docs/debito-tecnico.md) — defeitos e lacunas conhecidos, com a evidência de cada um
+- [`docs/decisoes/`](docs/decisoes/) — uma decisão por arquivo, com contexto e consequências
+- [`docs/sessoes/`](docs/sessoes/) — registros datados de sessões de trabalho
+- [`docs/historico/`](docs/historico/) — planejamento original do projeto, congelado
+- [`CLAUDE.md`](CLAUDE.md) — instruções para agentes de IA (`AGENTS.md` aponta para cá)

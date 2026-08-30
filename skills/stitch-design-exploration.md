@@ -3,7 +3,7 @@
 Use quando for gerar ou refinar mockups de UI para o UniversePie via Google
 Stitch (design gerado por IA a partir de prompt de texto).
 
-Ler `docs/CONTEXT.md` seção "Origem do nome e filosofia" antes de escrever
+Ler `docs/premissas.md` antes de escrever
 ou ajustar qualquer prompt de design.
 
 ---
@@ -50,7 +50,7 @@ resultados anteriores do Stitch revelarem.
 Os textos completos dos dois prompts estão no histórico da conversa em que
 esta skill foi criada — se não estiverem disponíveis, reconstruir a partir
 dos princípios acima e da seção "Origem do nome e filosofia" em
-`docs/CONTEXT.md`.
+`docs/premissas.md`.
 
 ---
 
@@ -80,5 +80,5 @@ Quando o servidor MCP do Stitch estiver configurado:
 ## Documentação
 
 - [ ] Se um prompt gerar uma direção de design adotada, registrar a decisão
-      e o raciocínio em `docs/CONTEXT.md` ou `CHANGELOG.md`.
+      e o raciocínio em `docs/premissas.md` ou `docs/decisoes/`.
 - [ ] Atualizar os prompts de referência nesta skill se a direção mudar.
