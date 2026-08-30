@@ -520,6 +520,47 @@ exigência verificável.
 
 ---
 
+## 13. O cliente do Gemini é cache de classe e não sobrevive a troca de event loop
+
+**O que é.** `GeminiProvider._client` é atributo de classe
+(`providers.py:161`), criado uma vez e reusado para sempre. O cliente `.aio` do
+`google-genai` carrega um transporte `httpx` amarrado ao event loop em que foi
+construído. Se um segundo loop chamar o mesmo cliente, a chamada falha com
+`Event loop is closed`.
+
+**Evidência.** Medido em 2026-08-30, run `v2-item9-gemini`, na virada do modo
+quiz para o modo cloze:
+
+```
+[cloze] rodada 1/3 via gemini/gemini-2.5-flash...
+  falhou (ProviderError: gemini/gemini-2.5-flash: Event loop is closed); nova tentativa em 25s
+  ok em 20.01s (5 itens)
+```
+
+O auditor chamava `asyncio.run()` uma vez **por modo**, então `--mode both
+--source direct` sempre queimava uma tentativa exatamente ali. O `--retries`
+mascarava: a rodada terminava "ok" e o número saía certo.
+
+**Corrigido do lado do auditor, não do provedor.** `main` passou a rodar os dois
+modos num único `asyncio.run` (`audit_exercises.py:1253`), com teste de
+regressão que falha se voltarem a ser dois loops. Isso elimina a falha
+observada, mas **não** a fragilidade: qualquer chamador que use mais de um event
+loop no mesmo processo reproduz.
+
+**Por que não foi corrigido no provedor.** Em produção o uvicorn tem um loop só e
+o defeito não aparece — não há evidência de impacto no usuário. A correção
+(indexar o cache por loop, ou detectar loop fechado e reconstruir) é barata mas
+mexe em código de produção para consertar um sintoma que só o instrumento vê.
+Fica registrado com a evidência, que é o que este arquivo existe para carregar.
+
+**Impacto.** Uma requisição desperdiçada por rodada `--mode both` — em tier
+gratuito, cota que não volta. Com `--retries 0`, a metade cloze da medição
+falharia inteira.
+
+**Custo.** Baixo.
+
+---
+
 ## Registrado mas fora de escopo aqui
 
 O formato dos cards varia legitimamente entre usuários do Anki — back vazio,

@@ -354,8 +354,13 @@ def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Find
 
     # 'take upon yourself' numa frase sobre 'she' produz "She was hesitant to
     # take upon yourself...". O imperativo é exceção: tem 'you' implícito.
-    if re.search(r"\b(your|yourself|yourselves)\b", target, re.IGNORECASE) and not re.search(
-        r"\byou(r|rs|rself|rselves)?\b", sentence, re.IGNORECASE
+    # `you're`, `you'd`, `you'll`, `you've` nao casavam com `\byour\b`: depois de
+    # "you" vem o apostrofo, entao a borda de palavra fecha antes do "r". Achado
+    # em 2026-08-30 na saida ao vivo do servidor - "many investors quit while
+    # you're ahead" passou batido pela checagem.
+    second_person = r"\byou(?:'(?:re|d|ll|ve)|r|rs|rself|rselves)?\b"
+    if re.search(second_person, target, re.IGNORECASE) and not re.search(
+        second_person, sentence, re.IGNORECASE
     ):
         # Só o trecho antes da lacuna: "Please, don't _____ ...; we don't have
         # data" é imperativo, e o 'we' da oração seguinte não governa o alvo.
@@ -414,17 +419,38 @@ def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Find
 # Checagens por lote e agregadas
 # --------------------------------------------------------------------------
 
-def check_batch(mode: str, batch: int, items: list[dict], requested: int, total_field) -> list[Finding]:
+def check_batch(
+    mode: str,
+    batch: int,
+    items: list[dict],
+    requested: int,
+    total_field,
+    usage: dict | None = None,
+    max_completion_tokens: int | None = None,
+) -> list[Finding]:
     col = Collector(mode, batch)
 
     if len(items) != requested:
-        # services.build_items descarta silenciosamente itens que não passam no
-        # Pydantic — receber menos que `n` é o único sintoma visível disso.
-        col.add(
-            "count_mismatch",
-            WARN,
-            f"Pedidos {requested} itens, recebidos {len(items)} (itens inválidos descartados pelo backend?).",
-        )
+        # Duas causas com correções opostas: `services.build_items` descarta
+        # silenciosamente item que não passa no Pydantic, ou a saída foi cortada
+        # no teto de tokens antes de completar a lista. A segunda se reconhece
+        # por `completion_tokens` encostado no teto — medido em 2026-08-30, run
+        # `v2-item1112-groq`: dois batches em 4096/4096 exatos, os outros quatro
+        # entre 2471 e 3536. A mensagem antiga culpava o backend nos dois casos.
+        completion = (usage or {}).get("completion_tokens")
+        if max_completion_tokens and completion and completion >= max_completion_tokens:
+            col.add(
+                "output_truncated",
+                WARN,
+                f"Pedidos {requested} itens, recebidos {len(items)}: a saída bateu no teto de "
+                f"{max_completion_tokens} tokens e foi cortada.",
+            )
+        else:
+            col.add(
+                "count_mismatch",
+                WARN,
+                f"Pedidos {requested} itens, recebidos {len(items)} (itens inválidos descartados pelo backend?).",
+            )
     if isinstance(total_field, int) and total_field != len(items):
         col.add("total_mismatch", ERROR, f"Campo `total`={total_field} não bate com {len(items)} itens.")
 
@@ -678,6 +704,9 @@ async def collect_direct(
                     items = build_items(item_cls, raw_items, cards)
                     record["latency_s"] = round(time.monotonic() - started, 2)
                     record["usage"] = provider.last_usage
+                    # O teto de completion do provedor: sem ele o auditor nao
+                    # distingue saida truncada de item descartado pelo Pydantic.
+                    record["max_completion_tokens"] = getattr(provider, "max_tokens", None)
                     # O pool inteiro, não só os cards citados: permite reanalisar
                     # depois perguntas que hoje não sabemos fazer (o modelo ignorou
                     # cards? preferiu os que têm back?).
@@ -778,7 +807,12 @@ def analyze(records: list[dict]) -> dict:
 
         for idx, item in enumerate(items, start=1):
             findings.extend(checker(item, mode, batch, idx))
-        findings.extend(check_batch(mode, batch, items, record.get("requested", len(items)), payload.get("total")))
+        findings.extend(
+            check_batch(
+                mode, batch, items, record.get("requested", len(items)), payload.get("total"),
+                record.get("usage"), record.get("max_completion_tokens"),
+            )
+        )
 
         located_by_mode[mode].extend((batch, idx, item) for idx, item in enumerate(items, start=1))
         batches.append(
@@ -1242,15 +1276,26 @@ def main(argv: list[str] | None = None) -> int:
         modes = ["quiz", "cloze"] if args.mode == "both" else [args.mode]
 
         records = []
-        for mode in modes:
-            if source == "direct":
-                records += asyncio.run(
-                    collect_direct(
+        if source == "direct":
+            # Um unico event loop para os dois modos. Havia um `asyncio.run` por
+            # modo, e `GeminiProvider._client` e cache de classe: o cliente
+            # `aio` ficava preso ao loop do quiz, que era fechado antes do cloze
+            # comecar. Toda rodada `--mode both` queimava uma tentativa na
+            # virada com "Event loop is closed" - medido em 2026-08-30, run
+            # `v2-item9-gemini`. Ver o item do event loop em `debito-tecnico.md`
+            # para a fragilidade que sobra do lado do provedor.
+            async def collect_direct_modes() -> list[dict]:
+                out: list[dict] = []
+                for mode in modes:
+                    out += await collect_direct(
                         mode, args.runs, args.n, args.provider, args.model,
                         args.timeout, args.cards or args.save_cards, args.cooldown, args.retries,
                     )
-                )
-            else:
+                return out
+
+            records = asyncio.run(collect_direct_modes())
+        else:
+            for mode in modes:
                 records += collect_http(args.url, mode, args.runs, args.n, args.cooldown, args.retries, args.timeout)
 
         providers_used = sorted({r["provider"] for r in records if r.get("provider")})

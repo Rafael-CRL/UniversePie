@@ -575,3 +575,104 @@ def test_sample_export_hides_which_model_produced_each_exercise(tmp_path):
     gabarito = json.loads((tmp_path / "amostra-gabarito.json").read_text(encoding="utf-8"))
     assert sorted(gabarito) == ["1", "2", "3"]
     assert set(gabarito.values()) == {"ollama/gemma4:e4b", "gemini/gemini-2.5-flash"}
+
+
+def test_both_modes_share_one_event_loop(tmp_path, monkeypatch):
+    """`--mode both --source direct` roda os dois modos no mesmo event loop.
+
+    Havia um `asyncio.run` por modo. `GeminiProvider._client` e cache de classe,
+    entao o cliente `aio` ficava preso ao loop do quiz, fechado antes do cloze
+    comecar, e toda rodada perdia uma tentativa com "Event loop is closed" na
+    virada - medido em 2026-08-30 no run `v2-item9-gemini`.
+    """
+    import asyncio
+
+    from scripts import audit_exercises as audit
+
+    loops: list[asyncio.AbstractEventLoop] = []
+
+    async def fake_collect_direct(mode, *args, **kwargs):
+        loops.append(asyncio.get_running_loop())
+        return [{"mode": mode, "batch": 1, "requested": 1, "provider": "fake/fake", "items": []}]
+
+    monkeypatch.setattr(audit, "collect_direct", fake_collect_direct)
+
+    cards = tmp_path / "pool.json"
+    cards.write_text(json.dumps([["settle into", "acomodar-se"]]), encoding="utf-8")
+
+    audit.main([
+        "--mode", "both", "--provider", "fake", "--cards", str(cards),
+        "--out-dir", str(tmp_path), "--tag", "loop-check",
+        "--runs", "1", "--n", "1", "--cooldown", "0", "--fail-on", "never",
+    ])
+
+    assert len(loops) == 2, "os dois modos tem que ter chamado collect_direct"
+    assert loops[0] is loops[1], "quiz e cloze rodaram em event loops diferentes"
+
+
+def test_short_batch_at_the_token_ceiling_is_reported_as_truncation():
+    """Receber menos itens que o pedido tem duas causas com correcoes opostas:
+    item descartado pelo Pydantic, ou saida cortada no teto de tokens. A
+    mensagem antiga culpava o backend nas duas.
+
+    Medido em 2026-08-30, run `v2-item1112-groq`: os dois batches curtos bateram
+    em `completion_tokens` 4096/4096 exatos; os outros quatro ficaram entre 2471
+    e 3536.
+    """
+    findings = check_batch(
+        "quiz", 1, [quiz(), quiz()], requested=5, total_field=2,
+        usage={"completion_tokens": 4096}, max_completion_tokens=4096,
+    )
+
+    assert "output_truncated" in checks(findings)
+    assert "count_mismatch" not in checks(findings)
+    assert "4096" in next(f.message for f in findings if f.check == "output_truncated")
+
+
+def test_short_batch_below_the_ceiling_still_blames_dropped_items():
+    findings = check_batch(
+        "quiz", 1, [quiz(), quiz()], requested=5, total_field=2,
+        usage={"completion_tokens": 2471}, max_completion_tokens=4096,
+    )
+
+    assert "count_mismatch" in checks(findings)
+    assert "output_truncated" not in checks(findings)
+
+
+def test_short_batch_without_usage_falls_back_to_the_old_message():
+    """Provedor que nao reporta usage, ou reanalise de um raw antigo que nao
+    guardou o teto: sem os dois numeros nao da para afirmar truncamento.
+    """
+    findings = check_batch("quiz", 1, [quiz(), quiz()], requested=5, total_field=2)
+
+    assert "count_mismatch" in checks(findings)
+    assert "output_truncated" not in checks(findings)
+
+
+@pytest.mark.parametrize(
+    "target",
+    ["quit while you're ahead", "you'd better believe it", "before you've settled in", "take upon yourself"],
+)
+def test_second_person_target_is_caught_through_the_contraction(target):
+    """`you're` nao casava com `\\byour\\b`: o apostrofo fecha a borda de palavra
+    antes do "r". Achado na saida ao vivo do servidor em 2026-08-30 - "many
+    investors quit while you're ahead" passou batido.
+    """
+    findings = check_cloze_item(
+        cloze(sentence="She was hesitant to _____ last year.", target_expression=target),
+        "cloze", 1, 1,
+    )
+
+    assert "person_mismatch" in checks(findings, ERROR)
+
+
+def test_imperative_with_a_contraction_target_is_still_allowed():
+    """O imperativo tem 'you' implicito e continua excecao - a correcao da
+    contracao nao pode transformar isso em falso positivo.
+    """
+    findings = check_cloze_item(
+        cloze(sentence="Don't _____ before the deal closes.", target_expression="quit while you're ahead"),
+        "cloze", 1, 1,
+    )
+
+    assert "person_mismatch" not in checks(findings)
