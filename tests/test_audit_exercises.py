@@ -226,6 +226,41 @@ def test_still_flags_repetition_the_candidate_creates_in_a_sentence_that_repeats
     assert "does_not_fit_the_blank" in checks(findings, ERROR)
 
 
+def test_flags_repetition_created_across_the_blank():
+    """A lacuna quase sempre fica ENTRE palavras. Medir a frase original trocando
+    a lacuna por espaço encostava as vizinhas e inventava uma repetição que
+    entrava na linha de base, mascarando a real — 'to ___ to' + 'talk to' passava
+    limpo, que é exatamente a forma do defeito do item 11."""
+    findings = check_cloze_item(
+        cloze(
+            sentence="She decided to _____ to her boss about the delay.",
+            target_expression="talk to",
+            acceptable_alternatives=[],
+        ),
+        "cloze",
+        1,
+        1,
+    )
+    assert "does_not_fit_the_blank" in checks(findings, ERROR)
+
+
+def test_pre_existing_repetition_of_the_same_word_does_not_mask_a_new_one():
+    """A contagem é por ocorrência, não por conjunto de palavras: a frase já tem
+    'It it' e o candidato cria um segundo. Com conjunto, o pré-existente apagava
+    o novo."""
+    findings = check_cloze_item(
+        cloze(
+            sentence="It it was late. It _____ that nobody cared.",
+            target_expression="it emerged",
+            acceptable_alternatives=[],
+        ),
+        "cloze",
+        1,
+        1,
+    )
+    assert "does_not_fit_the_blank" in checks(findings, ERROR)
+
+
 def test_detects_target_in_the_wrong_person():
     """'take upon yourself' numa frase sobre 'she' sai agramatical quando
     preenchida, e não existe resposta certa possível."""
@@ -372,6 +407,28 @@ def test_compare_reports_puts_the_runs_side_by_side(tmp_path):
     assert "| gemma | ollama/gemma4:e4b | 3 | 33% | 2 |" in table
     assert "| `ungrounded` | 0 | 1 |" in table
     assert "| strategy_coverage | 3/5 | 3/5 |" in table
+
+
+def test_compare_reports_ignores_raw_files_matched_by_the_glob(tmp_path):
+    """`--compare docs/audit/baseline-*.json` — a forma que a documentação
+    recomenda — casa também os .raw.json, que só têm meta e records. Antes eles
+    viravam linha de '0 itens · 0% limpos' com o nome de um run que aparecia
+    logo acima com os números certos, sugerindo regressão que não houve."""
+    a = _report(tmp_path, "groq", "groq/openai-gpt-oss-20b", 1.0, 0, [])
+    raw = tmp_path / "groq.raw.json"
+    raw.write_text(json.dumps({"meta": {"tag": "groq"}, "records": []}), encoding="utf-8")
+
+    table = compare_reports([a, str(raw)])
+
+    assert "| groq | groq/openai-gpt-oss-20b | 3 | 100% | 0 |" in table
+    assert "| 0 | 0% |" not in table
+    assert "Ignorados" in table and "groq.raw.json" in table
+
+
+def test_compare_reports_says_so_when_nothing_comparable_was_passed(tmp_path):
+    raw = tmp_path / "so-cru.raw.json"
+    raw.write_text(json.dumps({"meta": {}, "records": []}), encoding="utf-8")
+    assert "Nenhum relatório" in compare_reports([str(raw)])
 
 
 # --- estratificação por completude do card-fonte ---------------------------

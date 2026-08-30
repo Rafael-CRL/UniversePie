@@ -38,13 +38,52 @@ def parse_json(text: str) -> object:
     # exato para o qual ela existe.
     decoder = json.JSONDecoder()
     for idx, ch in enumerate(cleaned):
-        if ch in "{[":
-            try:
-                return decoder.raw_decode(cleaned, idx)[0]
-            except json.JSONDecodeError:
-                continue
+        if ch not in "{[":
+            continue
+        try:
+            value = decoder.raw_decode(cleaned, idx)[0]
+        except json.JSONDecodeError:
+            continue
+        # Candidato que abre DENTRO de uma estrutura que nunca fechou não é
+        # JSON cercado de narração: é o primeiro pedaço inteiro de uma resposta
+        # cortada pelo teto de tokens. Devolvê-lo entregaria uma sessão de 1
+        # exercício no lugar de n, calada — e truncamento é falha rotineira
+        # aqui (ver o quadro de erros de provedor no CLAUDE.md).
+        if _opens_inside_unclosed(cleaned, idx):
+            raise ProviderError(
+                "O modelo devolveu a resposta cortada no meio (provavelmente o teto "
+                "de tokens). Tente novamente ou peça menos exercícios por vez."
+            )
+        return value
 
     raise ProviderError("O modelo retornou uma resposta em formato inválido. Tente novamente.")
+
+
+def _opens_inside_unclosed(text: str, idx: int) -> bool:
+    """O trecho antes de `idx` deixa alguma estrutura aberta?
+
+    Só é consultado depois de a decodificação a partir das aberturas anteriores
+    ter falhado. Se falhou e este candidato está aninhado dentro delas, o que
+    sobrou é fragmento de resposta truncada, não JSON com prosa em volta.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for ch in text[:idx]:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+        elif ch == '"':
+            in_string = True
+        elif ch in "{[":
+            depth += 1
+        elif ch in "}]":
+            depth = max(0, depth - 1)
+    return depth > 0
 
 
 def extract_items(data: object, response_key: str) -> list[dict]:

@@ -97,6 +97,24 @@ def test_recovers_json_when_the_narration_itself_has_brackets():
     assert generate('Here\'s the analysis [see below]: {"quizzes": [{"a": 1}]}') == [{"a": 1}]
 
 
+def test_truncated_response_fails_instead_of_returning_a_short_session():
+    """Saída cortada pelo teto de tokens é falha rotineira (Groq 413/400, ver
+    CLAUDE.md). A recuperação decodifica a partir de cada abertura, então achava
+    o primeiro exercício inteiro e devolvia uma sessão de 1 no lugar de n, calada.
+    Fragmento de estrutura que nunca fechou tem que virar erro."""
+    truncada = (
+        '{"quizzes": [{"question": "Q1?", "options": ["A", "B"], "answer_index": 0}, '
+        '{"question": "Q2?", "opt'
+    )
+    with pytest.raises(ProviderError, match="cortada"):
+        generate(truncada)
+
+
+def test_truncated_bare_list_also_fails():
+    with pytest.raises(ProviderError, match="cortada"):
+        generate('[{"question": "Q1?", "answer_index": 0}, {"question": "Q2')
+
+
 def test_recovers_when_the_model_renames_the_list_key():
     """Se só existe uma lista no objeto, ela é a resposta — melhor do que
     descartar a sessão inteira por causa do nome da chave."""

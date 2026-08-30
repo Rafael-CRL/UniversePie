@@ -256,13 +256,22 @@ def check_quiz_item(item: dict, mode: str, batch: int, index: int) -> list[Findi
     return col.findings
 
 
-def _adjacent_repeats(text: str) -> set[str]:
-    """Palavras adjacentes repetidas no texto, em minúsculas ('had had' -> {'had'}).
+# Marcador que ocupa a lacuna ao medir a frase original. Trocar a lacuna por
+# espaço encostava as palavras vizinhas uma na outra e inventava uma repetição
+# ("decidiu ___ a ela" virava "decidiu a a ela"), que entrava na linha de base e
+# mascarava a repetição real do candidato — justo onde ela sempre acontece.
+_BLANK_PLACEHOLDER = "zzblankzz"
 
-    Usado para comparar a frase antes e depois de preencher a lacuna: só interessa
-    a repetição que o candidato introduziu.
+
+def _adjacent_repeats(text: str) -> collections.Counter:
+    """Quantas vezes cada palavra aparece repetida em sequência ('had had' -> {'had': 1}).
+
+    Contagem, não conjunto: a frase pode já ter 'it it' legítimo e o candidato
+    criar um segundo — com conjunto, o pré-existente apagava o novo.
     """
-    return {m.group(1).lower() for m in re.finditer(r"\b(\w+)\s+\1\b", text, re.IGNORECASE)}
+    return collections.Counter(
+        m.group(1).lower() for m in re.finditer(r"\b(\w+)\s+\1\b", text, re.IGNORECASE)
+    )
 
 
 def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Finding]:
@@ -297,12 +306,14 @@ def check_cloze_item(item: dict, mode: str, batch: int, index: int) -> list[Find
     # legítima — "they had had lunch", "o problema é que that clause" — e cobrar
     # isso do candidato reprova exercício bom. Como a checagem é severidade ERRO e
     # --fail-on error é o padrão, o falso positivo barra mudança de prompt boa.
-    baseline_repeats = _adjacent_repeats(re.sub(r"_{2,}", " ", sentence))
+    baseline_repeats = _adjacent_repeats(re.sub(r"_{2,}", _BLANK_PLACEHOLDER, sentence))
     for candidate, role, severity in (
         [(target, "target_expression", ERROR)]
         + [(str(a), "acceptable_alternatives", WARN) for a in alternatives]
     ):
         filled = re.sub(r"_{2,}", candidate, sentence, count=1)
+        # Counter - Counter descarta o que não sobrou: fica só o excesso que o
+        # candidato acrescentou sobre o que a frase já tinha.
         introduced = _adjacent_repeats(filled) - baseline_repeats
         repeated = next(iter(sorted(introduced)), None)
         if repeated and candidate:
@@ -629,6 +640,13 @@ async def collect_direct(
                 try:
                     cards = fixed_cards or await anki_client.get_card_pool(n)
                     raw_items = await generate_fn(cards, n, provider)
+                    # `build_items` faz `raw.pop("used_cards")`, então o índice
+                    # que o modelo realmente emitiu some antes de virar registro
+                    # e sobra só o placeholder "(source unavailable)". Sem isto
+                    # não dá para separar "o modelo ignorou o pool" de "o modelo
+                    # usou o pool e o used_cards veio fora do range" — causas com
+                    # correções diferentes (item 12 do debito-tecnico.md).
+                    emitted = [list(raw.get("used_cards") or []) for raw in raw_items]
                     items = build_items(item_cls, raw_items, cards)
                     record["latency_s"] = round(time.monotonic() - started, 2)
                     record["usage"] = provider.last_usage
@@ -636,10 +654,13 @@ async def collect_direct(
                     # depois perguntas que hoje não sabemos fazer (o modelo ignorou
                     # cards? preferiu os que têm back?).
                     record["pool"] = [list(c) for c in cards]
-                    record["payload"] = {
-                        key: [item.model_dump() for item in items],
-                        "total": len(items),
-                    }
+                    payload_items = [item.model_dump() for item in items]
+                    # build_items descarta item que não valida, então o pareamento
+                    # por posição só vale quando nada foi descartado.
+                    if len(emitted) == len(payload_items):
+                        for item, used in zip(payload_items, emitted):
+                            item["used_cards_emitted"] = used
+                    record["payload"] = {key: payload_items, "total": len(items)}
                     record.pop("error", None)
                     print(f"  ok em {record['latency_s']}s ({len(items)} itens)", flush=True)
                     break
@@ -1033,9 +1054,26 @@ def run_label(report: dict, path: str) -> str:
 def compare_reports(paths: list[str]) -> str:
     """Tabela lado a lado de vários .json — é assim que se decide se um
     provedor (ou um prompt) é melhor que o outro em vez de achar que é."""
-    reports = [(path, json.loads(Path(path).read_text(encoding="utf-8"))) for path in paths]
+    reports = []
+    ignored = []
+    for path in paths:
+        report = json.loads(Path(path).read_text(encoding="utf-8"))
+        # `--compare docs/audit/baseline-*.json` — a forma recomendada — casa
+        # também os .raw.json, que só têm meta e records. Sem esta guarda eles
+        # viravam linha de "0 itens · 0% limpos" com o nome de um run que está
+        # logo acima com os números certos, sugerindo regressão que não houve.
+        if "summary" not in report:
+            ignored.append(path)
+            continue
+        reports.append((path, report))
 
-    lines = ["# Comparação de runs", "", "| Run | Provedor | Itens | Limpos | Erros | Alertas | Infos |", "|---|---|---|---|---|---|---|"]
+    if not reports:
+        return "Nenhum relatório de auditoria nos caminhos passados (só .raw.json?)."
+
+    lines = ["# Comparação de runs", ""]
+    if ignored:
+        lines += [f"> Ignorados por não serem relatório de análise: {', '.join(ignored)}", ""]
+    lines += [ "| Run | Provedor | Itens | Limpos | Erros | Alertas | Infos |", "|---|---|---|---|---|---|---|"]
     for path, report in reports:
         summary = report.get("summary", {})
         meta = report.get("meta", {})
@@ -1109,7 +1147,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="timeout por requisição em segundos (padrão: o do provedor)",
     )
-    parser.add_argument("--out-dir", default="docs/audit")
+    # Sem default: no caminho normal vira docs/audit, mas em --from-raw a
+    # ausência significa "reanalisa onde o raw está", e um default apagaria a
+    # diferença entre não passar nada e pedir docs/audit de propósito.
+    parser.add_argument("--out-dir", default=None, help="diretório dos relatórios (padrão: docs/audit)")
     parser.add_argument("--tag", default="", help="nome do run (ex: prompt-v4) — vira o nome dos arquivos")
     parser.add_argument("--from-raw", help="reanalisa um .raw.json existente, sem chamar a API")
     parser.add_argument(
@@ -1155,7 +1196,17 @@ def main(argv: list[str] | None = None) -> int:
         raw = json.loads(Path(args.from_raw).read_text(encoding="utf-8"))
         records = raw["records"]
         meta = raw["meta"] | {"timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"), "reanalyzed_from": args.from_raw}
-        prefix = Path(args.from_raw.replace(".raw.json", ""))
+        # Honrar --out-dir e --tag aqui. Antes o prefixo saía do caminho do
+        # raw e as duas flags eram ignoradas em silêncio, então reanalisar
+        # baseline-x.raw.json sobrescrevia baseline-x.json e .md — os arquivos
+        # contra os quais a próxima medição vai comparar.
+        source = Path(args.from_raw.replace(".raw.json", ""))
+        out_dir = Path(args.out_dir) if args.out_dir else source.parent
+        out_dir.mkdir(parents=True, exist_ok=True)
+        prefix = out_dir / (args.tag or source.name)
+        if prefix == source:
+            print(f"reanálise no lugar: sobrescreve {with_ext(prefix, '.md')} e {with_ext(prefix, '.json')}")
+            print("  (use --tag ou --out-dir para escrever noutro lugar)", flush=True)
     else:
         # Escolher provedor/modelo só faz sentido no modo direto: por HTTP quem
         # decide é o .env do servidor que já está rodando.
@@ -1187,7 +1238,7 @@ def main(argv: list[str] | None = None) -> int:
             "url": args.url,
             "tag": args.tag,
         }
-        out_dir = Path(args.out_dir)
+        out_dir = Path(args.out_dir or "docs/audit")
         out_dir.mkdir(parents=True, exist_ok=True)
         prefix = out_dir / (args.tag or f"{args.mode}-{args.provider or 'http'}-{datetime.now().strftime('%Y%m%d-%H%M')}")
         with_ext(prefix, ".raw.json").write_text(
