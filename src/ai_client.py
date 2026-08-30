@@ -31,12 +31,18 @@ def parse_json(text: str) -> object:
     except json.JSONDecodeError:
         pass
 
-    match = re.search(r"[\{\[].*[\}\]]", cleaned, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group(0))
-        except json.JSONDecodeError:
-            pass
+    # Tenta decodificar a partir de cada abertura de objeto/lista. Um regex
+    # guloso ancorava no PRIMEIRO colchete da string, então narração com
+    # colchete antes do JSON ("Here's the analysis [see below]: {...}") movia o
+    # início da captura para dentro da prosa e a recuperação falhava — no caso
+    # exato para o qual ela existe.
+    decoder = json.JSONDecoder()
+    for idx, ch in enumerate(cleaned):
+        if ch in "{[":
+            try:
+                return decoder.raw_decode(cleaned, idx)[0]
+            except json.JSONDecodeError:
+                continue
 
     raise ProviderError("O modelo retornou uma resposta em formato inválido. Tente novamente.")
 

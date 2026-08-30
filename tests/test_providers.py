@@ -109,6 +109,19 @@ def test_error_message_surfaces_the_real_cause_not_the_generic_one(capture):
         asyncio.run(GroqProvider().generate("prompt"))
 
 
+def test_error_body_shaped_as_a_list_still_produces_a_provider_message(capture):
+    """Endpoint compatível pode devolver o erro como lista JSON. Antes, `.get`
+    num list levantava AttributeError que ninguém captura no caminho, e o
+    usuário via HTTP 500 com texto de exceção Python no lugar da mensagem."""
+    respond(
+        capture,
+        httpx.Response(400, json=[{"code": "bad_request", "message": "unknown field response_format"}]),
+    )
+
+    with pytest.raises(ProviderError, match="unknown field response_format"):
+        asyncio.run(GroqProvider().generate("prompt"))
+
+
 def test_records_token_usage_from_openai_compatible_providers(capture):
     """Latência sozinha não distingue um modelo que gastou 800 tokens de outro
     que gastou 3.000 no mesmo trabalho."""

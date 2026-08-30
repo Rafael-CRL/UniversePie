@@ -115,6 +115,12 @@ class Provider(ABC):
             payload = response.json()
         except Exception:
             return (response.text or "")[:200]
+        # Corpo de erro em lista existe: `[{"code": ..., "message": ...}]`. Sem
+        # esta guarda, `.get` levantava AttributeError, que ninguém no caminho
+        # captura — o usuário via HTTP 500 com texto de exceção Python no lugar
+        # da mensagem do provedor.
+        if not isinstance(payload, dict):
+            return str(payload)[:300]
         error = payload.get("error", payload)
         if not isinstance(error, dict):
             return str(error)[:300]

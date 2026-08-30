@@ -1080,7 +1080,12 @@ def describe_providers() -> str:
         provider = get_provider(name)
         ready, reason = provider.ready()
         mark = "ok " if ready else "-- "
-        lines.append(f"{mark}{name:<12} modelo padrão: {provider.model:<34} {reason}")
+        # default_model é o da classe. `provider.model` traz o AI_MODEL do .env
+        # quando o provedor é o configurado, e aí a coluna diria "padrão" para
+        # uma escolha do usuário — justo na linha que ele inspeciona primeiro.
+        default = provider.default_model
+        override = f" (.env usa {provider.model})" if provider.model != default else ""
+        lines.append(f"{mark}{name:<12} modelo padrão: {default:<34} {reason}{override}")
     return "\n".join(lines)
 
 

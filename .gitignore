@@ -15,3 +15,11 @@ docs/audit/*
 !docs/audit/pool-exemplo.json
 # As cruas voltam a ser ignoradas: a regra acima também casaria *.raw.json.
 docs/audit/*.raw.json
+
+# Claude Code: `settings.json` é configuração do projeto e fica versionado
+# quando existir — permissões e hooks valem para quem clonar. Skills instaladas
+# são dependência de terceiro (dados, scripts, fixtures) que ninguém revisa aqui
+# e que envelhece em silêncio; procedimentos autorais do projeto ficam em
+# `skills/`, na raiz. `settings.local.json` é preferência pessoal.
+.claude/skills/
+.claude/settings.local.json

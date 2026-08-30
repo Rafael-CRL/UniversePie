@@ -90,6 +90,13 @@ def test_recovers_json_wrapped_in_prose():
     assert generate('Here is the JSON you asked for:\n{"quizzes": [{"a": 1}]}\nHope it helps!') == [{"a": 1}]
 
 
+def test_recovers_json_when_the_narration_itself_has_brackets(): 
+    """Narração com colchete antes do JSON — link markdown, aparte entre
+    colchetes — quebrava a recuperação, porque a captura começava dentro da
+    prosa. É justamente o caso para o qual a recuperação existe."""
+    assert generate('Here\'s the analysis [see below]: {"quizzes": [{"a": 1}]}') == [{"a": 1}]
+
+
 def test_recovers_when_the_model_renames_the_list_key():
     """Se só existe uma lista no objeto, ela é a resposta — melhor do que
     descartar a sessão inteira por causa do nome da chave."""
