@@ -1,0 +1,144 @@
+{
+  "meta": {
+    "timestamp": "2026-08-30 16:41",
+    "commit": "bd948f0",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "ollama/gemma4:e4b",
+    "cards": "docs/audit/pool-exemplo.json",
+    "url": "http://localhost:14567",
+    "tag": "v2-final-gemma4"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 0,
+    "items_audited": 30,
+    "items_flagged": 10,
+    "clean_rate": 0.67,
+    "errors": 8,
+    "warnings": 3,
+    "infos": 0
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 5,
+        "1": 4,
+        "2": 4,
+        "3": 2
+      },
+      "answer_position_top_share": 0.33,
+      "longest_option_is_answer": 0.33,
+      "quiz_types": {
+        "discrimination": 3,
+        "production": 3,
+        "interference": 3,
+        "polysemy": 3,
+        "contextual": 3
+      },
+      "strategy_coverage": "5/5",
+      "items": 15
+    },
+    "cloze": {
+      "commonality": {
+        "moderate": 7,
+        "common": 6,
+        "niche": 2
+      },
+      "alternatives_avg": 2.0,
+      "items": 15
+    }
+  },
+  "findings": [
+    {
+      "check": "telegraphed_trap",
+      "severity": "warn",
+      "message": "Enunciado entrega a estratégia: antecipa a armadilha de L1 — 'Brazilian Portuguese speaker'.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 3
+    },
+    {
+      "check": "duplicate_options",
+      "severity": "error",
+      "message": "Opções repetidas dentro do mesmo quiz: ['down the street'].",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 3
+    },
+    {
+      "check": "passive_recognition",
+      "severity": "warn",
+      "message": "Enunciado pergunta o significado (reconhecimento passivo).",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 4
+    },
+    {
+      "check": "answer_in_question",
+      "severity": "error",
+      "message": "A resposta ('down the street') aparece no enunciado.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 3
+    },
+    {
+      "check": "target_in_hint",
+      "severity": "error",
+      "message": "A dica entrega a resposta ('drop it').",
+      "mode": "cloze",
+      "batch": 2,
+      "item": 1
+    },
+    {
+      "check": "missing_context_note",
+      "severity": "error",
+      "message": "commonality='moderate' exige context_note explicando o porquê.",
+      "mode": "cloze",
+      "batch": 2,
+      "item": 1
+    },
+    {
+      "check": "missing_context_note",
+      "severity": "error",
+      "message": "commonality='moderate' exige context_note explicando o porquê.",
+      "mode": "cloze",
+      "batch": 2,
+      "item": 2
+    },
+    {
+      "check": "missing_context_note",
+      "severity": "error",
+      "message": "commonality='moderate' exige context_note explicando o porquê.",
+      "mode": "cloze",
+      "batch": 2,
+      "item": 3
+    },
+    {
+      "check": "meta_leak_explanation",
+      "severity": "warn",
+      "message": "Vazamento em explanation: fala sobre o aluno em terceira pessoa — 'the learner'.",
+      "mode": "cloze",
+      "batch": 2,
+      "item": 5
+    },
+    {
+      "check": "missing_context_note",
+      "severity": "error",
+      "message": "commonality='moderate' exige context_note explicando o porquê.",
+      "mode": "cloze",
+      "batch": 3,
+      "item": 2
+    },
+    {
+      "check": "missing_context_note",
+      "severity": "error",
+      "message": "commonality='moderate' exige context_note explicando o porquê.",
+      "mode": "cloze",
+      "batch": 3,
+      "item": 4
+    }
+  ]
+}

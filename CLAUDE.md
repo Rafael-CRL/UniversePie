@@ -14,7 +14,7 @@ input. Isso é a premissa "n+1", e ela governa o resto.
 | mexer em endpoint, fluxo ou contrato | `docs/arquitetura.md` |
 | discordar de algo que parece arbitrário | `docs/decisoes/` — provavelmente já foi decidido, com o motivo |
 | mexer nos prompts ou na auditoria | `docs/sessoes/` — o README aponta o plano da próxima sessão, a linha de base vigente e o que cada registro ainda sustenta |
-| saber o que fazer agora | `docs/debito-tecnico.md` — o índice no topo lista as cinco correções de prompt pendentes, ordenadas por evidência |
+| saber o que fazer agora | `docs/debito-tecnico.md` — o índice no topo mostra as quatro correções de prompt fechadas em 2026-08-30, com o antes/depois de cada uma, e a que sobrou |
 
 `docs/historico/` é o planejamento original, **congelado**. Não é referência ativa
 e contém instruções contrárias às decisões atuais.

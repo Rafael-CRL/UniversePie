@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "timestamp": "2026-08-30 16:43",
+    "commit": "bd948f0",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "ollama/qwen3:8b",
+    "cards": "docs/audit/pool-exemplo.json",
+    "url": "http://localhost:14567",
+    "tag": "v2-final-qwen3"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 0,
+    "items_audited": 30,
+    "items_flagged": 2,
+    "clean_rate": 0.93,
+    "errors": 2,
+    "warnings": 1,
+    "infos": 5
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 6,
+        "1": 3,
+        "2": 3,
+        "3": 3
+      },
+      "answer_position_top_share": 0.4,
+      "longest_option_is_answer": 0.27,
+      "quiz_types": {
+        "discrimination": 3,
+        "production": 3,
+        "interference": 3,
+        "polysemy": 3,
+        "contextual": 3
+      },
+      "strategy_coverage": "5/5",
+      "items": 15
+    },
+    "cloze": {
+      "commonality": {
+        "moderate": 10,
+        "common": 5
+      },
+      "alternatives_avg": 2.0,
+      "items": 15
+    }
+  },
+  "findings": [
+    {
+      "check": "answer_in_question",
+      "severity": "error",
+      "message": "A resposta ('She walked down the street') aparece no enunciado.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 3
+    },
+    {
+      "check": "anchor_not_in_source_card",
+      "severity": "error",
+      "message": "A âncora declarada ('sound') não aparece no card-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 4
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Multiple meanings of 'sound' She is in good sound Which sent') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 4
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verbs with settle' testado 2x na mesma auditoria.",
+      "mode": "quiz",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verb lay low' testado 3x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'idiom slippery slope' testado 3x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verb settle for' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verb settle into' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    }
+  ]
+}

@@ -8,33 +8,36 @@ aqui ficam defeitos e lacunas do que já existe.
 
 Última revisão: 2026-08-30.
 
-## As cinco correções de prompt pendentes
+## As correções de prompt: quatro fechadas, uma aberta
 
-São o próximo passo do projeto pela decisão
-[0013](decisoes/0013-ordem-de-execucao.md). Linha de base vigente:
-`audit/base-g1-*.json` — pool ideal congelado (`audit/pool-exemplo.json`),
-quatro modelos, 120 exercícios, 2026-08-30.
+Corrigidas e medidas na sessão de 2026-08-30
+(`sessoes/2026-08-30-correcao-de-prompts.md`), contra a linha de base do grupo 1
+(`audit/base-g1-*.json`, pool ideal congelado `audit/pool-exemplo.json`). Cada
+correção foi medida **isolada**, no modelo em que o defeito aparece.
 
-**Ordem por evidência no modelo que o usuário roda, não por gravidade
-imaginada.** A ordenação anterior punha o item 12 em primeiro "por natureza".
-A medição de 2026-08-30 desmentiu: ele não existe fora de modelo local.
+| # | Defeito | Prompt | Antes | Depois | Medido em |
+|---|---|---|---|---|---|
+| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | Resposta nunca na última posição | quiz | **0/122** | 3/15, 3/15, 3/12 | gemini, qwen3, groq |
+| [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | Numeração do pool vaza | quiz | 3/15 | **0/10** | gemini |
+| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Cloze sem resposta possível | cloze | 7/15 | **0/13** | groq |
+| [12](#12-exercício-que-não-se-ancora-no-card-do-usuário) | Exercício não ancorado | quiz | 6/15 | **1/15** | qwen3 |
+| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | Rotação dilui a premissa | quiz | sem número | — | **aberto** |
 
-| # | Defeito | Prompt | Evidência | Aparece no Gemini? |
-|---|---|---|---|---|
-| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta nunca cai na última posição | quiz | **0/122**, 6 configurações, 2 pools | sim |
-| [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | A numeração do pool vaza para a explicação | quiz | 6/60 no pool congelado; 13/62 no sorteado | sim |
-| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze | 7/15 no Groq; 0 no Gemini | não |
-| [12](#12-exercício-que-não-se-ancora-no-card-do-usuário) | Exercício não ancorado no card do usuário | quiz | **18 em modelo local, 0 em API** | não |
-| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | A rotação garante que parte da sessão não seja n+1 | quiz | sem número — ver o item | — |
+**Item 8 é o que sobra**, e continua sem número: nada no auditor sabe dizer se um
+exercício apresenta variação ou reapresenta o sentido que o card já ensina. O
+caminho para medi-lo está no próprio item e custa dois campos.
 
-**O item 9 lidera por reprodutibilidade.** Em 122 quizzes, seis configurações de
-modelo, dois pools diferentes e dois dias, a última alternativa foi a resposta
-**zero vezes**. Nenhum outro item chega perto dessa consistência, e a correção é
-uma instrução de distribuição.
+**Duas ressalvas sobre o "depois".**
 
-**Os itens 11 e 12 são condicionais ao modelo.** Corrigi-los medindo no Ollama
-otimiza para um modelo que não é o que roda em produção. Ver a ressalva em cada
-um antes de gastar sessão neles.
+1. **O item 10 está subdimensionado.** A cota diária do Gemini (20 requisições no
+   free tier) acabou no meio da rodada de confirmação: 0 vazamentos em **10**
+   quizzes, não em 15. O sinal é bom — a linha de base tinha 3/15 e a primeira
+   versão da regra teve 4/15 — mas a confirmação em 15 quizzes está pendente.
+2. **A primeira versão da regra do item 10 piorou o defeito**, e o motivo virou
+   regra de escrita de prompt neste projeto: ela listava as strings proibidas
+   entre aspas, incluindo `"Card 1"`, e o modelo passou a anotar cada expressão
+   com `(Card N)`. **Instrução negativa com exemplo literal prima o formato que
+   proíbe.** A versão que funcionou é positiva e não escreve o literal.
 
 Procedimento em `skills/prompt-review.md`. Mudar prompt exige confirmação do
 autor — ver `CLAUDE.md`.
@@ -326,6 +329,38 @@ reproduzível do projeto e por isso lidera o índice.
 **Impacto.** Quem marcar sempre a primeira acerta 60% sem saber inglês. Como o
 viés é idêntico em modelos não relacionados, a causa é o prompt, não o modelo.
 
+## Corrigido em 2026-08-30
+
+A posição passou a ser **atribuída**, não pedida. `_answer_positions`
+(`prompts.py:4`) embaralha `[i % 4]` — o que garante as quatro posições quando
+n >= 4 — e a regra 2 lista a atribuição quiz a quiz. Duas partes mecânicas:
+
+1. A lista explícita. "Varie a posição" é vago e o modelo não tem como saber o
+   que já usou entre itens da mesma resposta.
+2. **`answer_index` subiu para antes de `options` no `## Output Format`.**
+   Geração é autorregressiva: com `options` primeiro, o modelo escrevia as
+   alternativas e só depois escolhia o índice — ou seja, escolhia "onde já pôs a
+   certa". Invertendo, ele se compromete com a posição antes de escrever.
+
+**Medido, três modelos, posição 3 antes → depois:**
+
+| Modelo | Antes | Depois | Distribuição depois |
+|---|---|---|---|
+| gemini-2.5-flash | 0/15 | **3/15** | 6/3/3/3 |
+| qwen3:8b | 0/15 | **3/15** | 6/3/3/3 |
+| gpt-oss-20b (groq) | 0/15 | **3/12** | 5/2/2/3 |
+
+`answer_position_top_share` no Gemini caiu de 0,67 para 0,40; no Groq, de 0,80
+para 0,42. O alerta `answer_position_bias` sumiu nos três. `6/3/3/3` é
+exatamente a atribuição `[0,0,1,2,3]` repetida em três rodadas: obediência
+perfeita no Gemini e no qwen3.
+
+**O risco que a correção cria, e por que foi aceito.** Atribuir o índice abre a
+possibilidade de o modelo declarar `answer_index: 3` e deixar a resposta certa
+noutra posição — e **o auditor não detecta isso**, porque ele não sabe qual é a
+resposta certa. Os três quizzes com índice 3 da rodada `v2-item9-gemini` foram
+lidos um a um e os três estavam corretos. Em escala, quem pega é a amostra cega.
+
 **Custo.** Baixo — uma instrução de distribuição no prompt de quiz. Exige
 remedição contra a linha de base.
 
@@ -371,6 +406,37 @@ que roda em produção.
 ter respondido — mas expõe mecânica interna e polui a explicação, que é a parte
 que deveria ensinar.
 
+## Corrigido em 2026-08-30, na segunda tentativa
+
+A numeração precisa continuar existindo — `used_cards` depende dela —, então a
+correção proíbe a citação, não remove o número. O bloco virou
+`## Card Pool (internal — the learner never sees this)` e a regra 10 cobre os
+três campos que o aluno lê.
+
+**A primeira versão piorou o defeito e o achado vale mais que ela.** Ela listava
+as strings proibidas entre aspas: `"Card 1"`, `"the pool"`, `"the deck"`. Medida
+em `v2-item10-gemini`: **4 vazamentos em 15 quizzes contra 3 da linha de base**,
+todos num único batch e todos no formato `(Card N)` — o modelo passou a anotar
+cada expressão citada com o número entre parênteses:
+
+```
+'Drop it' (Card 1) is an informal way to tell someone to stop talking about a
+topic. 'Lay low' (Card 2) means to avoid attention.
+```
+
+**Instrução negativa com exemplo literal prima o formato que ela proíbe.** A
+versão que funcionou é positiva, manda identificar expressão só por aspas, e o
+contraexemplo usa uma palavra que não aparece no bloco do pool.
+
+| Run | Vazamentos | Quizzes |
+|---|---|---|
+| `base-g1-gemini` | 3 | 15 |
+| `v2-item10-gemini` (1ª versão) | **4** | 15 |
+| `v2-item10b-gemini` (2ª versão) | **0** | 10 |
+
+**Ressalva de tamanho.** A cota diária do Gemini acabou no meio da rodada de
+confirmação, então são 10 quizzes e não 15. Confirmar em 15 quando a cota voltar.
+
 **Custo.** Baixo. Proibir referência a card no texto visível, ou mudar o formato
 do bloco do pool para não sugerir numeração citável.
 
@@ -400,6 +466,71 @@ correção em Gemini daria zero antes e zero depois.
 `does_not_fit_the_blank`, ambas de severidade ERRO. O prompt continua gerando.
 Distinto do item 5: ali o avaliador rejeita resposta certa; aqui o exercício nasce
 sem resposta certa, e corrigir o matching não resolve.
+
+## Corrigido em 2026-08-30
+
+Duas regras novas no topo do `## Rules:` do cloze, ambas procedimentais: montar a
+frase com `target_expression` no lugar da lacuna e **ler de volta palavra por
+palavra** antes de entregar, com concordância obrigatória quando a expressão
+carrega pronome ou possessivo; e rodar o mesmo teste em cada
+`acceptable_alternative`, que é inválida se repete palavra já encostada na
+lacuna.
+
+A formulação é procedimental de propósito. Escrever os dois casos medidos por
+extenso ("She ... take upon yourself", "it ___ that" + "it transpired") era a
+alternativa óbvia, e foi descartada pela lição da regra 10 do quiz: exemplo
+literal do defeito prima o defeito.
+
+**Medido no Groq, que é onde ele aparece:**
+
+| Run | `does_not_fit_the_blank` | Exercícios de cloze |
+|---|---|---|
+| `base-g1-groq` | **7** | 15 |
+| `v2-item1112-groq` | **0** | 13 |
+
+Nenhum ERRO novo apareceu no lugar: o run fechou com 0 erros contra 3 da linha de
+base, e `clean_rate` subiu de 90% para 96%.
+
+**Não zerou, e a rodada isolada engana.** A linha de base final
+(`v2-final-groq`, 15 exercícios) trouxe **4** de volta. Somando as duas medições
+pós-correção: **4 em 28 (14%), contra 7 em 15 (47%) antes.** É melhora grande e
+não é solução.
+
+## O que a saída ao vivo mostrou, e a checagem não pegou — 2026-08-30
+
+Verificação de ponta a ponta pelo servidor HTTP com o **deck real** (não o pool
+congelado), 5 exercícios de cloze, `openai/gpt-oss-20b`:
+
+```
+When the stock market is booming, many investors _____.
+  target_expression: "quit while you're ahead"
+```
+
+Preenchida, sai *"many investors quit while you're ahead"* — a mesma classe de
+defeito que este item descreve, sobrevivendo à correção do prompt. **O auditor
+não marcou.** Duas lacunas, de naturezas diferentes:
+
+1. **Contração não reconhecida — corrigido.** O padrão procurava
+   `your|yourself|yourselves`. Em `you're`, o apóstrofo fecha a borda de palavra
+   antes do "r", então nada casava. Agora cobre `you`, `you're`, `you'd`,
+   `you'll`, `you've`, `yours`, com o imperativo preservado como exceção.
+   Reanalisar seis `.raw.json` com a checagem corrigida devolve contagens
+   **idênticas**: a contração não ocorre no pool congelado, só no deck real.
+2. **Sujeito nominal não detectado — aberto.** `other_subject` só procura
+   pronomes, e *"many investors"* não é pronome. Cobrir isso exigiria decidir
+   "esta oração tem sujeito de 3ª pessoa" por regex, que dispara em imperativo
+   com objeto determinado ("Please give the report to _____"). O item 4 desta
+   mesma página já rejeitou duas heurísticas por precisão ruim; não vale
+   adicionar uma terceira sem medir.
+
+**Consequência para o número.** Com a lacuna 2 aberta, **4 em 28 é piso, não
+contagem exata.** Qualquer leitura deste item tem que carregar isso.
+
+**Segundo achado da mesma rodada.** Um dos cinco exercícios nasceu **sem lacuna**
+— a frase vinha com a expressão escrita por extenso. O auditor pega
+(`missing_blank` e `target_in_sentence`, ambos ERRO), então é defeito de prompt
+sem instrumentação faltando. Não foi corrigido nesta sessão: apareceu na
+verificação final, e mudar prompt sem medir é o que o plano desta branch proíbe.
 
 **Custo.** Baixo. Exigir no prompt que a expressão-alvo encaixe gramaticalmente na
 frase construída.
@@ -514,6 +645,35 @@ rodada de 5 itens no `qwen3:8b` em 2026-08-30 12:07. O item 4 (`polysemy` — "P
 'sound'") é o `ungrounded`: pergunta sobre 'sound' significando "healthy/safe"
 sem card-fonte nenhum. Estava só no scratchpad de sessão em `/tmp`, que é
 apagado.
+
+## Corrigido em 2026-08-30
+
+Um parágrafo logo abaixo de `## Quiz Strategy Types` declarando que os exemplos
+são **forma, não conteúdo**: todo quiz tem que nascer de uma expressão do pool, e
+expressão que só existe no exemplo está fora. Os exemplos ficaram — são eles que
+ensinam o formato de cada estratégia, e a cobertura 5/5 nunca foi o problema.
+
+**Medido no qwen3:8b, que é onde ele aparece.** A medição precisou de duas
+rodadas porque as correções 9 e 10 vieram antes e mexem no mesmo prompt:
+
+| Run | `anchor_not_in_source_card` | `weak_grounding` | Erros |
+|---|---|---|---|
+| `base-g1-qwen3` | 4 | 4 | 4 |
+| `v2-item910-qwen3` (9 e 10, sem o 12) | 6 | 6 | 6 |
+| `v2-item1112-qwen3` (com o 12) | **1** | **1** | **2** |
+
+**A rodada do meio é o controle e ela importa.** Sem a correção do item 12, os
+achados de ancoragem *subiram* (4 → 6) com as correções 9 e 10 no prompt. Não há
+mecanismo estabelecido para isso — pode ser ruído em amostra de 15, pode ser o
+modelo pequeno generalizando a proibição da regra 10 para além do texto visível.
+O que a terceira rodada mostra é que a correção do item 12 não só reverteu como
+levou abaixo da linha de base.
+
+**Ponto de atenção.** A pergunta que o item deixou em aberto — se o modelo ignora
+o pool ou se o `used_cards` vem errado — **continua sem resposta**. As três
+rodadas foram `--source direct` e `used_cards_emitted` está gravado nos `.raw`,
+mas com 1 achado restante não há amostra para separar as duas causas. Fica para
+quando houver contagem maior, ou some junto se não voltar.
 
 **Custo.** Baixo se for prompt. A instrução de ancorar existe; falta ser
 exigência verificável.

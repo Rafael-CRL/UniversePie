@@ -1,0 +1,95 @@
+{
+  "meta": {
+    "timestamp": "2026-08-30 16:37",
+    "commit": "bd948f0",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "groq/openai/gpt-oss-20b",
+    "cards": "docs/audit/pool-exemplo.json",
+    "url": "http://localhost:14567",
+    "tag": "v2-item1112-groq"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 0,
+    "items_audited": 25,
+    "items_flagged": 1,
+    "clean_rate": 0.96,
+    "errors": 0,
+    "warnings": 3,
+    "infos": 2
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 5,
+        "1": 2,
+        "2": 2,
+        "3": 3
+      },
+      "answer_position_top_share": 0.42,
+      "longest_option_is_answer": 0.17,
+      "quiz_types": {
+        "discrimination": 3,
+        "production": 3,
+        "interference": 2,
+        "contextual": 2,
+        "polysemy": 2
+      },
+      "strategy_coverage": "5/5",
+      "items": 12
+    },
+    "cloze": {
+      "commonality": {
+        "common": 7,
+        "moderate": 6
+      },
+      "alternatives_avg": 1.92,
+      "items": 13
+    }
+  },
+  "findings": [
+    {
+      "check": "count_mismatch",
+      "severity": "warn",
+      "message": "Pedidos 5 itens, recebidos 2 (itens inválidos descartados pelo backend?).",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 0
+    },
+    {
+      "check": "passive_recognition",
+      "severity": "warn",
+      "message": "Enunciado pergunta o significado (reconhecimento passivo).",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 4
+    },
+    {
+      "check": "count_mismatch",
+      "severity": "warn",
+      "message": "Pedidos 5 itens, recebidos 3 (itens inválidos descartados pelo backend?).",
+      "mode": "cloze",
+      "batch": 1,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'lay low' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'come up with' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    }
+  ]
+}

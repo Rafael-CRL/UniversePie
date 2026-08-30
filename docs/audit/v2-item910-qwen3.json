@@ -1,0 +1,208 @@
+{
+  "meta": {
+    "timestamp": "2026-08-30 16:28",
+    "commit": "bd948f0",
+    "mode": "both",
+    "runs": 3,
+    "n": 5,
+    "source": "direct",
+    "provider": "ollama/qwen3:8b",
+    "cards": "docs/audit/pool-exemplo.json",
+    "url": "http://localhost:14567",
+    "tag": "v2-item910-qwen3"
+  },
+  "summary": {
+    "batches_requested": 6,
+    "batches_failed": 0,
+    "items_audited": 30,
+    "items_flagged": 6,
+    "clean_rate": 0.8,
+    "errors": 6,
+    "warnings": 6,
+    "infos": 7
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 7,
+        "1": 3,
+        "2": 2,
+        "3": 3
+      },
+      "answer_position_top_share": 0.47,
+      "longest_option_is_answer": 0.13,
+      "quiz_types": {
+        "discrimination": 3,
+        "production": 3,
+        "interference": 3,
+        "polysemy": 3,
+        "contextual": 3
+      },
+      "strategy_coverage": "5/5",
+      "items": 15
+    },
+    "cloze": {
+      "commonality": {
+        "moderate": 6,
+        "common": 6,
+        "niche": 3
+      },
+      "alternatives_avg": 2.0,
+      "items": 15
+    }
+  },
+  "findings": [
+    {
+      "check": "anchor_not_in_source_card",
+      "severity": "error",
+      "message": "A âncora declarada ('sound') não aparece no card-fonte.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 4
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Multiple meanings of 'sound' The music was very sound. Which') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 4
+    },
+    {
+      "check": "anchor_not_in_source_card",
+      "severity": "error",
+      "message": "A âncora declarada ('loop in') não aparece no card-fonte.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 5
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Pragmatic implication of 'loop in the whole team' The team w') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 5
+    },
+    {
+      "check": "anchor_not_in_source_card",
+      "severity": "error",
+      "message": "A âncora declarada ('sound') não aparece no card-fonte.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 4
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Multiple meanings of 'sound' She made a loud sound. Which se') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 4
+    },
+    {
+      "check": "anchor_not_in_source_card",
+      "severity": "error",
+      "message": "A âncora declarada ('loop in the whole team') não aparece no card-fonte.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 5
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Pragmatic implication of a boss's message The team will be i') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 2,
+      "item": 5
+    },
+    {
+      "check": "anchor_not_in_source_card",
+      "severity": "error",
+      "message": "A âncora declarada ('sound') não aparece no card-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 4
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Multiple meanings of 'sound' The machine made a sound. Which') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 4
+    },
+    {
+      "check": "anchor_not_in_source_card",
+      "severity": "error",
+      "message": "A âncora declarada ('loop in the whole team') não aparece no card-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 5
+    },
+    {
+      "check": "weak_grounding",
+      "severity": "warn",
+      "message": "Zero sobreposição léxica entre o que é testado ('Pragmatic implications of a boss's message The team is no lo') e os cards-fonte.",
+      "mode": "quiz",
+      "batch": 3,
+      "item": 5
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'multiple meanings of sound' testado 3x na mesma auditoria.",
+      "mode": "quiz",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verbs with settle' testado 2x na mesma auditoria.",
+      "mode": "quiz",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'idiom slippery slope' testado 3x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verb get through' testado 3x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'phrasal verb settle into' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'idiom itching to' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    },
+    {
+      "check": "repeated_concept",
+      "severity": "info",
+      "message": "Conceito 'collocation top shelf' testado 2x na mesma auditoria.",
+      "mode": "cloze",
+      "batch": 0,
+      "item": 0
+    }
+  ]
+}

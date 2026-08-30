@@ -8,6 +8,36 @@ está em `premissas.md`.
 
 ---
 
+## Como escrever a regra, não só o que ela diz
+
+Medido em 2026-08-30 e registrado porque custou uma rodada de cota
+(`sessoes/2026-08-30-correcao-de-prompts.md`, item 10).
+
+**Instrução negativa com exemplo literal prima o formato que ela proíbe.** A
+regra que proibia o quiz de citar a numeração interna do pool listava as strings
+entre aspas — `"Card 1"`, `"the pool"`. O vazamento *subiu* de 3 para 4 em 15
+quizzes, e passou a sair no formato `(Card N)`, que a própria regra tinha
+acabado de exibir.
+
+O que funcionou, e a ordem de preferência:
+
+1. **Forma positiva.** Diga o que fazer ("identifique uma expressão só por
+   aspas"), não a lista do que não fazer.
+2. **Procedimento em vez de exemplo.** "Substitua a expressão na lacuna e leia a
+   frase de volta palavra por palavra" carrega mais que mostrar duas frases
+   quebradas.
+3. **Se precisar de contraexemplo, use material que não esteja no prompt.** O
+   contraexemplo da regra corrigida usa uma palavra que não aparece no bloco do
+   pool, justamente para não dar ao modelo um literal copiável.
+
+**Ordem de campo no `## Output Format` é instrução, não formatação.** Geração é
+autorregressiva: o modelo se compromete com o que escreve primeiro. Pôr
+`answer_index` antes de `options` foi parte da correção do viés de posição — com
+`options` primeiro, o modelo escolhia o índice depois de já ter posto a resposta
+em algum lugar.
+
+---
+
 ## Princípios
 
 - A IA opera sobre o banco de dados do usuário — não gera conteúdo genérico

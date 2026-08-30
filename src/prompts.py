@@ -1,3 +1,24 @@
+import random
+
+
+def _answer_positions(n: int) -> list[int]:
+    """Sorteia em qual das 4 posicoes a resposta certa cai, uma por quiz.
+
+    Item 9 do `debito-tecnico.md`: em 122 quizzes, seis configuracoes de modelo
+    e dois pools, a ultima alternativa foi a resposta ZERO vezes. O vies e
+    identico em modelos nao relacionados, entao a causa e o prompt, que define
+    `answer_index` e nunca pede distribuicao.
+
+    A posicao e atribuida aqui, nao pedida ao modelo: instrucao de variar ja
+    existe para as estrategias e e obedecida, mas "varie a posicao" e vaga e o
+    modelo nao tem como saber o que ja usou. `[i % 4]` embaralhado garante as
+    quatro posicoes quando n >= 4 e no maximo ceil(n/4) repeticoes de cada.
+    """
+    base = [i % 4 for i in range(n)]
+    random.shuffle(base)
+    return base
+
+
 def _format_cards_block(cards: list[tuple[str, str]]) -> str:
     cards_block = ""
     for i, (front, back) in enumerate(cards):
@@ -8,6 +29,9 @@ def _format_cards_block(cards: list[tuple[str, str]]) -> str:
 def build_quiz_prompt(cards: list[tuple[str, str]], n: int) -> str:
     """Builds the prompt that sends a pool of cards and requests n quizzes."""
     cards_block = _format_cards_block(cards)
+    assignment = ", ".join(
+        f"quiz {i + 1} -> {pos}" for i, pos in enumerate(_answer_positions(n))
+    )
 
     return f"""You are a quiz designer for intermediate-to-advanced English learners whose native language is Brazilian Portuguese.
 
@@ -16,6 +40,8 @@ You will receive a pool of {len(cards)} flashcards from the learner's Anki deck.
 ## Quiz Strategy Types
 
 You MUST vary the strategy across the session. Use as many different types as possible. Each quiz must declare its type.
+
+The examples below illustrate the SHAPE of each strategy, never its content. Every quiz you write must be built on an expression that appears in the Card Pool at the end of this prompt. If an expression from an example also happens to be in the pool, you may use it — because it is in the pool, not because it is in the example. Expressions that appear only in the examples are off limits.
 
 ### discrimination
 Use when the pool contains cards that share a root word, similar structure, or related concept (e.g., "settle into" vs "settle for" vs "settle on"; or "get off" vs "get on" vs "get over").
@@ -44,7 +70,9 @@ Example: "Your boss emails: 'Going forward, let's loop in the whole team.' What 
 ## Rules
 
 1. Each quiz MUST have exactly 4 options.
-2. answer_index is the 0-based index of the correct option.
+2. answer_index is the 0-based index of the correct option. Do NOT pick it yourself — it is assigned. Use exactly these values, in this order:
+   {assignment}
+   Write answer_index FIRST in each quiz object, before "options", then order the four options so the correct one falls on the assigned index. Position 3 (the last option) is a normal answer position and MUST be used when assigned.
 3. Wrong options must be PLAUSIBLE. They must represent real confusions, not absurd fillers. Whenever possible, derive distractors from other cards in the pool.
 4. All questions must be written in English.
 5. Explanations must be concise, useful, and teach something the learner can retain. If relevant, mention the Portuguese interference or the common mistake.
@@ -53,6 +81,9 @@ Example: "Your boss emails: 'Going forward, let's loop in the whole team.' What 
 7. Vary quiz types. Do not use the same type for consecutive quizzes.
 8. You may combine concepts from multiple cards in a single quiz.
 9. Prioritize concepts that have nuances, polysemy, or structural patterns over simple vocabulary.
+10. The pool is internal. The learner never sees it and cannot look anything up. In "question", "options" and "explanation", identify an expression ONLY by quoting the expression itself. Never append an index, a number, a label, or a parenthetical pointing back to where it came from.
+    Write: 'Settle for' means to accept less.
+    Not:   'Settle for' (source 6) means to accept less.
 
 ## Output Format
 
@@ -64,15 +95,15 @@ Return a JSON object:
       "concept": "Brief label of the concept being tested",
       "source_expression": "the expression copied verbatim from a card's Front",
       "question": "The question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
       "answer_index": 0,
+      "options": ["Option A", "Option B", "Option C", "Option D"],
       "explanation": "Why the answer is correct. Mention traps or common errors if applicable.",
       "used_cards": [1, 3]
     }}
   ]
 }}
 
-## Card Pool
+## Card Pool (internal — the learner never sees this)
 
 {cards_block}
 
@@ -105,6 +136,8 @@ Your job is to generate exactly {n} cloze exercises. Each exercise presents a se
 9. Include used_cards: array of 1-based card indices from the pool that were used.
 
 ## Rules:
+- Before shipping an exercise, substitute target_expression into the blank and read the whole sentence back, word for word. If the result is ungrammatical, fix the sentence or the expression — do not ship it. If the expression contains a pronoun or a possessive, it MUST agree with the subject of your sentence.
+- Run the same read-back test on every acceptable_alternative. An alternative is invalid if it repeats a word already sitting next to the blank, because filling it in doubles that word.
 - The blank must target a SINGLE meaningful expression — not a generic word like "the" or "very".
 - Sentences must sound natural, not contrived to force the expression in.
 - Acceptable alternatives must be genuinely interchangeable in the given sentence without changing the core meaning significantly.
