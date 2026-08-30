@@ -8,6 +8,22 @@ aqui ficam defeitos e lacunas do que já existe.
 
 Última revisão: 2026-08-30.
 
+## As quatro correções de prompt pendentes
+
+Agrupadas aqui porque são o próximo passo do projeto pela decisão
+[0013](decisoes/0013-ordem-de-execucao.md), e porque devem ser feitas e medidas
+juntas, contra `audit/baseline-*.json`.
+
+| # | Defeito | Prompt |
+|---|---|---|
+| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | A rotação obrigatória garante que parte da sessão não seja n+1 | quiz |
+| [9](#9-a-resposta-correta-quase-nunca-cai-nas-últimas-posições) | A resposta correta quase nunca cai nas últimas posições | quiz |
+| [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | A numeração do pool vaza para a explicação | quiz |
+| [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Exercício de cloze sem resposta certa possível | cloze |
+
+Procedimento em `skills/prompt-review.md`. Mudar prompt exige confirmação do
+autor — ver `CLAUDE.md`.
+
 ---
 
 ## 1. Dados de agendamento do Anki são descartados
@@ -190,17 +206,6 @@ crescente e observar onde a latência e a taxa de item descartado disparam.
 
 ---
 
-## Registrado mas fora de escopo aqui
-
-O formato dos cards varia legitimamente entre usuários do Anki — back vazio,
-back em português, back em inglês, back longo ou curto, front como expressão ou
-como frase inteira. Isso não é débito: é a realidade da fonte de dados, e o
-sistema precisa lidar com ela. O auditor já mede o efeito disso através da
-checagem `source_without_back`, que compara a taxa de defeito entre exercícios
-construídos sobre cards com e sem back.
-
----
-
 ## 7. O campo `concept` é texto livre e inviabiliza qualquer agregação
 
 **O que é.** `QuizItem.concept` e `ClozeItem.concept` são descritos no prompt como
@@ -245,3 +250,86 @@ remover a diluição — não simplesmente remover a regra.
 **Custo.** Baixo, mas exige remedição contra a linha de base. É a quarta correção
 de prompt pendente; as outras três estão em
 `sessoes/2026-08-29-auditoria.md`.
+
+---
+
+## 9. A resposta correta quase nunca cai nas últimas posições
+
+**O que é.** O prompt de quiz define `answer_index` e nunca pede distribuição.
+
+**Evidência.** 60 quizzes, quatro modelos independentes (Google, Alibaba, OpenAI,
+Google local; de 4B a proprietário grande), linha de base de 2026-08-29:
+
+| pos 0 | pos 1 | pos 2 | pos 3 |
+|---|---|---|---|
+| 36 (60%) | 22 (37%) | 2 (3%) | 0 (0%) |
+
+A última alternativa **nunca** foi a resposta.
+
+**Impacto.** Quem marcar sempre a primeira acerta 60% sem saber inglês. Como o
+viés é idêntico em modelos não relacionados, a causa é o prompt, não o modelo.
+
+**Custo.** Baixo — uma instrução de distribuição no prompt de quiz. Exige
+remedição contra a linha de base.
+
+---
+
+## 10. A numeração interna do pool vaza para o texto que o aluno lê
+
+**O que é.** O bloco do pool é formatado como `Card 1:`, `Card 2:`
+(`prompts.py:4`), e a regra 3 manda derivar distratores de outros cards. O modelo
+leva a numeração adiante, para dentro da explicação.
+
+**Evidência.** 13 ocorrências na linha de base ("Card 2", "Card 10", "not in the
+pool" dentro da explicação). O que dirige é combinar cards, não o back vazio:
+
+```
+1 card-fonte:  4/87  (5%)
+4 cards-fonte: 8/11  (73%)
+```
+
+**Impacto.** Cosmético do ponto de vista de aprendizado — o aluno vê depois de já
+ter respondido — mas expõe mecânica interna e polui a explicação, que é a parte
+que deveria ensinar.
+
+**Custo.** Baixo. Proibir referência a card no texto visível, ou mudar o formato
+do bloco do pool para não sugerir numeração citável.
+
+---
+
+## 11. O prompt de cloze gera exercício sem resposta certa possível
+
+**O que é.** Duas classes de defeito: alvo em pessoa incompatível com a frase, e
+alternativa que duplica palavra já presente na frase.
+
+**Evidência.** 6 em 56 exercícios da linha de base. `take upon yourself` numa
+frase sobre "She" ("She was hesitant to take upon yourself the enormous task");
+`get your head around` numa frase sobre "me"; "it _____ that" com a alternativa
+"it transpired", que produz "it it transpired".
+
+**Impacto.** Exercício impossível de acertar. É o defeito mais caro dos quatro,
+porque ensina ao usuário que ele errou algo que não tinha resposta.
+
+**Estado.** O auditor **detecta** — checagens `person_mismatch` e
+`does_not_fit_the_blank`, ambas de severidade ERRO. O prompt continua gerando.
+Distinto do item 5: ali o avaliador rejeita resposta certa; aqui o exercício nasce
+sem resposta certa, e corrigir o matching não resolve.
+
+**Custo.** Baixo. Exigir no prompt que a expressão-alvo encaixe gramaticalmente na
+frase construída.
+
+**Ressalva sobre a checagem `does_not_fit_the_blank`:** o ultrareview de
+2026-08-30 achou nela um falso positivo — ela varre a frase inteira em busca de
+palavra repetida, então "had had" ou "that that" legítimos na frase original
+disparam contra qualquer candidato. Corrigir antes de confiar no número.
+
+---
+
+## Registrado mas fora de escopo aqui
+
+O formato dos cards varia legitimamente entre usuários do Anki — back vazio,
+back em português, back em inglês, back longo ou curto, front como expressão ou
+como frase inteira. Isso não é débito: é a realidade da fonte de dados, e o
+sistema precisa lidar com ela. O auditor já mede o efeito disso através da
+checagem `source_without_back`, que compara a taxa de defeito entre exercícios
+construídos sobre cards com e sem back.

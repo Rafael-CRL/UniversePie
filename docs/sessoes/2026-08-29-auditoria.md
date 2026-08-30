@@ -71,7 +71,7 @@ A última alternativa **nunca** foi a resposta. Quem marcar sempre a primeira
 acerta 60% sem saber inglês. Como o viés é igual em modelos não relacionados, a
 causa é o prompt, que define `answer_index` e nunca pede distribuição.
 
-**Correção pendente no prompt de quiz.**
+**Correção pendente** — migrado para `debito-tecnico.md` item 9.
 
 ### 2. Numeração de card vaza para o texto que o aluno lê
 
@@ -86,7 +86,7 @@ que dirige é combinar cards, não o back vazio:
 A regra 3 do prompt manda derivar distratores de outros cards, e o bloco do
 pool é formatado como `Card 1:`, `Card 2:`. O modelo leva a numeração adiante.
 
-**Correção pendente no prompt de quiz.**
+**Correção pendente** — migrado para `debito-tecnico.md` item 10.
 
 ### 3. Exercícios de cloze sem resposta certa possível
 
@@ -96,7 +96,7 @@ alternativas que duplicam palavra da frase ("it _____ that" com alternativa
 `it transpired` → "it it transpired"). O auditor passou a detectar
 (`person_mismatch`, `does_not_fit_the_blank`), **o prompt continua gerando.**
 
-**Correção pendente no prompt de cloze.**
+**Correção pendente** — migrado para `debito-tecnico.md` item 11.
 
 ### 4. A métrica de qualidade inverteu a ordenação real
 
