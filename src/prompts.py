@@ -77,6 +77,13 @@ Example: "Your boss emails: 'Going forward, let's loop in the whole team.' What 
 4. All questions must be written in English.
 5. Explanations must be concise, useful, and teach something the learner can retain. If relevant, mention the Portuguese interference or the common mistake.
 6. Each quiz must include a "used_cards" field: an array of 1-based card indices from the pool that were used to build that quiz. This lets the system trace the source.
+6c. Each quiz must include a "variation_type" field, declaring what this quiz does with the anchor expression. Exactly one of:
+   - "same_sense" — tests the sense the card already teaches
+   - "other_sense" — tests a different meaning of the same word or expression
+   - "derived_form" — tests a derived or inflected form (noun from verb, participle, adjective)
+   - "different_particle" — tests the same root with a different particle or preposition
+   - "different_register" — tests the same meaning in a different register or level of formality
+   Be honest. "same_sense" is a legitimate answer and declaring it truthfully is worth more than dressing a quiz up as something it is not.
 6b. Each quiz must include a "source_expression" field: the expression the quiz is anchored on, copied VERBATIM from the Front of one of the cards you listed in used_cards. Copy it exactly as written there — do not conjugate it, translate it, or rephrase it. The quiz itself should test a VARIATION of that expression (another sense, a derived form, a different particle, a different register); the anchor names where it came from, not what is being tested.
 7. Vary quiz types. Do not use the same type for consecutive quizzes.
 8. You may combine concepts from multiple cards in a single quiz.
@@ -94,6 +101,7 @@ Return a JSON object:
       "quiz_type": "discrimination | production | interference | polysemy | contextual",
       "concept": "Brief label of the concept being tested",
       "source_expression": "the expression copied verbatim from a card's Front",
+      "variation_type": "same_sense | other_sense | derived_form | different_particle | different_register",
       "question": "The question text",
       "answer_index": 0,
       "options": ["Option A", "Option B", "Option C", "Option D"],

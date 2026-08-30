@@ -24,6 +24,28 @@ class QuizItem(BaseModel):
     # e a falha sumiria em vez de virar número — foi exatamente o que aconteceu
     # com `used_cards`. O auditor mede quem não declara.
     source_expression: str = ""
+    # Que tipo de variação este quiz apresenta sobre a expressão do card.
+    #
+    # Item 8 do `debito-tecnico.md`: das cinco estratégias, só `polysemy` e
+    # `discrimination` apresentam variação, e a regra 7 do prompt manda rodar
+    # todas. O sistema portanto GARANTE que parte de cada sessão reapresente o
+    # sentido que o card já ensina — que é o oposto da premissa n+1 — e a métrica
+    # de cobertura 5/5 registra isso como saúde.
+    #
+    # Enum e não prosa livre de propósito. Dois campos de texto ("sentido do
+    # card" e "sentido testado") seriam mais expressivos e reproduziriam o item
+    # 7: `concept` já é rótulo livre e por isso não agrega. Um enum agrega e
+    # cruza com `quiz_type`.
+    #
+    # A ressalva honesta: isto é DECLARATIVO. Verifica o modelo contra si mesmo,
+    # pega contradição, não pega erro — diferente de `source_expression`, que é
+    # verificável contra o card.
+    #
+    # Opcional com default pela mesma razão do `source_expression`: campo novo
+    # que os modelos ainda não emitem de forma comprovada, e obrigatório faria
+    # `build_items` descartar o item inteiro, apagando a falha em vez de
+    # transformá-la em número.
+    variation_type: str = ""
     question: str
     options: list[str]
     answer_index: int
@@ -36,6 +58,24 @@ class QuizItem(BaseModel):
         allowed = {"discrimination", "production", "interference", "polysemy", "contextual"}
         if v not in allowed:
             raise ValueError(f"quiz_type deve ser um de {allowed}, recebeu '{v}'")
+        return v
+
+    @field_validator("variation_type")
+    @classmethod
+    def valid_variation_type(cls, v):
+        # Vazio é aceito: quem não declara vira alerta no auditor, não item
+        # descartado. Valor inventado, porém, quebraria a agregação que o campo
+        # existe para permitir, e aí é melhor perder o item que sujar a chave.
+        allowed = {
+            "",
+            "same_sense",
+            "other_sense",
+            "derived_form",
+            "different_particle",
+            "different_register",
+        }
+        if v not in allowed:
+            raise ValueError(f"variation_type deve ser um de {sorted(allowed)}, recebeu '{v}'")
         return v
 
     @field_validator("options")

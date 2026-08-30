@@ -200,14 +200,59 @@ rodada dedicada.
 
 ---
 
+## 8. Item 8: instrumentado, e o número apareceu na primeira rodada
+
+Era o único do índice sem número, e a pré-condição que ele mesmo registrava —
+"decidir quando o item 12 estiver medido" — foi cumprida nesta sessão.
+
+`QuizItem.variation_type`: enum declarando o que o quiz faz com a âncora.
+**Enum, e não os dois campos de sentido que o item propunha**, porque texto livre
+reproduziria o item 7, em que `concept` promete identidade e entrega rótulo.
+
+No auditor: `variation_contradicts_type` (ERRO, `polysemy`/`discrimination`
+declarando `same_sense`), `empty_variation_type` (ALERTA), e a métrica
+`variation_share` — a premissa n+1 em número.
+
+**`production` e `interference` declarando `same_sense` não são defeito.** Elas
+testam o sentido conhecido por desenho; punir a declaração honesta ensinaria o
+modelo a mentir, que é o oposto do que um campo declarativo serve para fazer.
+
+**Primeira medição, `v2-item8-adesao-groq`, 10 quizzes:**
+
+| | |
+|---|---|
+| Adesão | **10/10** |
+| `variation_share` | **0,40** |
+| Distribuição | `same_sense` 6, `different_particle` 2, `other_sense` 1, `different_register` 1 |
+| `strategy_coverage` | **5/5** |
+| Contradições | 1 |
+
+**As duas métricas juntas são a decisão [0002](../decisoes/0002-rotacao-de-estrategias.md)
+virando número.** Cobertura 5/5 — o indicador que três auditorias registraram
+como saúde — na mesma rodada em que 6 de 10 exercícios reapresentam o sentido que
+o card já ensina.
+
+**O que não foi feito:** a correção do prompt. Baixar `variation_share` exige
+mexer na regra 7 preservando o antídoto contra o flashcard disfarçado, e mudar
+prompt sem linha de base é o que esta branch existe para não fazer. Agora a linha
+de base existe.
+
+**Ressalva que fica.** A checagem é declarativa: pega contradição, não pega
+mentira coerente. Vale menos que `source_expression`, que é verificável contra o
+card.
+
+---
+
 ## Pendências abertas
 
 - **Linha de base final do Gemini** — bloqueada por cota até o reset diário. É a
   primeira coisa da próxima sessão, e é ela que fecha o item 10 em 15 quizzes.
-- **Item 8 continua sem número.** A pré-condição que o próprio item registrava
-  ("decidir quando o item 12 estiver medido") foi cumprida nesta sessão, então a
-  decisão está madura — mas ela exige campo novo no `QuizItem`, que é mudança de
-  contrato.
+- **Item 8 tem número e não tem correção.** `variation_share` 0,40 no
+  gpt-oss-20b. Falta medir nos outros modelos e então mexer na regra 7 —
+  preservando o antídoto da [0002](../decisoes/0002-rotacao-de-estrategias.md),
+  que é remover a diluição sem remover a regra.
+- **A decisão 0002 está marcada "aceita, com revisão pendente".** A revisão que
+  ela pede agora tem com o que ser feita. O ADR ainda não foi atualizado.
 - **As amostras cegas não foram lidas por humano.**
   `audit/amostra-v2-groq-amostra.json` e `audit/amostra-v2-qwen3-amostra.json`,
   10 exercícios cada, gabarito à parte. `clean_rate` mede conformidade com regra,

@@ -21,11 +21,14 @@ correção foi medida **isolada**, no modelo em que o defeito aparece.
 | [10](#10-a-numeração-interna-do-pool-vaza-para-o-texto-que-o-aluno-lê) | Numeração do pool vaza | quiz | 3/15 | **0/10** | gemini |
 | [11](#11-o-prompt-de-cloze-gera-exercício-sem-resposta-certa-possível) | Cloze sem resposta possível | cloze | 7/15 | **0/13** | groq |
 | [12](#12-exercício-que-não-se-ancora-no-card-do-usuário) | Exercício não ancorado | quiz | 6/15 | **1/15** | qwen3 |
-| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | Rotação dilui a premissa | quiz | sem número | — | **aberto** |
+| [8](#8-a-rotação-obrigatória-das-estratégias-dilui-a-premissa) | Rotação dilui a premissa | quiz | sem número | `variation_share` **0,40** | **instrumentado, não corrigido** |
 
-**Item 8 é o que sobra**, e continua sem número: nada no auditor sabe dizer se um
-exercício apresenta variação ou reapresenta o sentido que o card já ensina. O
-caminho para medi-lo está no próprio item e custa dois campos.
+**Item 8 é o que sobra, e deixou de ser "estrutural".** `variation_type` fez o
+quiz declarar o que ele faz com a âncora, e a primeira rodada deu
+`variation_share` **0,40** com `strategy_coverage` **5/5** — as duas métricas na
+mesma sessão, uma dizendo saúde e a outra dizendo que 6 de 10 exercícios
+reapresentam o sentido que o card já ensina. O número existe; a correção do
+prompt, não.
 
 **Duas ressalvas sobre o "depois".**
 
@@ -290,6 +293,56 @@ pega contradição, não pega erro. Diferente do `source_expression`, que é
 verificável contra o card. Ainda assim é a única via visível para tirar este item
 do "estrutural", e o custo é dois campos. Decidir quando o item 12 estiver medido,
 com dado na mão em vez de no plano.
+
+## Instrumentado em 2026-08-30 — e o número apareceu na primeira rodada
+
+`QuizItem.variation_type` (novo, `models.py`): enum declarando o que o quiz faz
+com a âncora — `same_sense`, `other_sense`, `derived_form`, `different_particle`,
+`different_register`.
+
+**Enum e não os dois campos de sentido que este item propunha.**
+`sense_on_card` + `sense_tested` seriam mais expressivos e seriam dois campos de
+prosa livre — exatamente a doença do item 7, em que `concept` promete identidade
+e entrega rótulo. Enum agrega e cruza com `quiz_type`.
+
+Três coisas novas no auditor:
+
+- `variation_contradicts_type` (ERRO) — `polysemy` e `discrimination` existem
+  para apresentar sentido diferente; declarar `same_sense` neles é contradição.
+  `production` e `interference` testam o sentido conhecido **por desenho**, e ali
+  `same_sense` é honestidade, não defeito: punir a declaração honesta ensinaria o
+  modelo a mentir.
+- `empty_variation_type` (ALERTA) — quem não declara.
+- `variation_share` — a fração da sessão que apresenta variação. É a premissa n+1
+  em número, e entrou na tabela do `--compare`.
+
+**Primeira medição, `v2-item8-adesao-groq`, 10 quizzes:**
+
+| | |
+|---|---|
+| Adesão | **10/10** declararam o campo |
+| `variation_share` | **0,40** |
+| Distribuição | `same_sense` 6, `different_particle` 2, `other_sense` 1, `different_register` 1 |
+| `strategy_coverage` | **5/5** |
+| `variation_contradicts_type` | 1 (um `polysemy` declarando `same_sense`) |
+
+**As duas últimas linhas juntas são o item inteiro.** Cobertura 5/5 na mesma
+rodada em que 6 de 10 exercícios reapresentam o sentido que o card já ensina: a
+métrica que dizia saúde e a que diz diluição, lado a lado, na mesma sessão. É o
+que a [0002](decisoes/0002-rotacao-de-estrategias.md) descreveu em prosa e nunca
+teve como contar.
+
+**O que isto ainda não é.** A checagem é **declarativa**: pega o modelo se
+contradizendo, não pega o modelo mentindo com coerência. Um quiz `production` que
+declara `same_sense` honestamente e um que declara `other_sense` falsamente saem
+iguais do auditor. Continua valendo menos que `source_expression`, que é
+verificável contra o card.
+
+**O que falta, e por que não foi feito hoje.** O número existe; a **correção do
+prompt** não. Baixar `variation_share` exige mexer na regra 7 preservando o
+antídoto da 0002 — e mudar prompt sem linha de base é o que esta branch existe
+para não fazer. A linha de base agora existe: 0,40 no gpt-oss-20b. Falta repetir
+nos outros modelos e então corrigir.
 
 **Custo.** Baixo para o prompt, mas exige remedição contra a linha de base. É a
 quinta correção de prompt pendente — todas as cinco estão no índice no topo deste

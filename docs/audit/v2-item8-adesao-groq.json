@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "timestamp": "2026-08-30 17:01",
+    "commit": "bd948f0",
+    "mode": "quiz",
+    "runs": 2,
+    "n": 5,
+    "source": "direct",
+    "provider": "groq/openai/gpt-oss-20b",
+    "cards": "docs/audit/pool-exemplo.json",
+    "url": "http://localhost:14567",
+    "tag": "v2-item8-adesao-groq"
+  },
+  "summary": {
+    "batches_requested": 2,
+    "batches_failed": 0,
+    "items_audited": 10,
+    "items_flagged": 1,
+    "clean_rate": 0.9,
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0
+  },
+  "stats": {
+    "quiz": {
+      "answer_positions": {
+        "0": 4,
+        "1": 2,
+        "2": 2,
+        "3": 2
+      },
+      "variation_types": {
+        "different_particle": 2,
+        "same_sense": 6,
+        "different_register": 1,
+        "other_sense": 1
+      },
+      "variation_share": 0.4,
+      "answer_position_top_share": 0.4,
+      "longest_option_is_answer": 0.5,
+      "quiz_types": {
+        "discrimination": 2,
+        "production": 2,
+        "interference": 2,
+        "polysemy": 2,
+        "contextual": 2
+      },
+      "strategy_coverage": "5/5",
+      "items": 10
+    }
+  },
+  "findings": [
+    {
+      "check": "variation_contradicts_type",
+      "severity": "error",
+      "message": "quiz_type `polysemy` existe para apresentar sentido diferente, mas o quiz declarou `same_sense`.",
+      "mode": "quiz",
+      "batch": 1,
+      "item": 4
+    }
+  ]
+}

@@ -236,6 +236,27 @@ def check_quiz_item(item: dict, mode: str, batch: int, index: int) -> list[Findi
     for hit in scan_patterns(explanation, META_LEAK_PATTERNS):
         col.add("meta_leak_explanation", WARN, f"Vazamento na explicação: {hit}.")
 
+    # Item 8: a rotacao obrigatoria das estrategias garante que parte da sessao
+    # reapresente o sentido que o card ja ensina, e a cobertura 5/5 registrava
+    # isso como saude. `variation_type` faz o quiz declarar o que ele faz com a
+    # ancora, e `polysemy`/`discrimination` existem justamente para apresentar
+    # sentido diferente - declarar `same_sense` neles e contradicao.
+    #
+    # A checagem e DECLARATIVA: pega o modelo se contradizendo, nao pega o
+    # modelo mentindo com coerencia. Vale menos que `anchor_not_in_source_card`,
+    # que e verificavel contra o card, e e a unica via visivel para tirar o item
+    # 8 do "estrutural".
+    variation = item.get("variation_type", "") or ""
+    if not variation.strip():
+        col.add("empty_variation_type", WARN, "O quiz nao declarou `variation_type`.")
+    elif variation == "same_sense" and quiz_type in ("polysemy", "discrimination"):
+        col.add(
+            "variation_contradicts_type",
+            ERROR,
+            f"quiz_type `{quiz_type}` existe para apresentar sentido diferente, "
+            f"mas o quiz declarou `same_sense`.",
+        )
+
     for hit in scan_patterns(question, TELEGRAPH_PATTERNS):
         col.add("telegraphed_trap", WARN, f"Enunciado entrega a estratégia: {hit}.")
 
@@ -483,6 +504,14 @@ def aggregate_quiz(items: list[dict]) -> tuple[dict, list[Finding]]:
         i.get("answer_index") for i in items if isinstance(i.get("answer_index"), int)
     )
     stats["answer_positions"] = {str(k): positions.get(k, 0) for k in range(4)}
+
+    # A premissa n+1 em numero: que fracao da sessao apresenta variacao, em vez
+    # de reapresentar o sentido que o card ja ensina (item 8).
+    declared = [i.get("variation_type") for i in items if (i.get("variation_type") or "").strip()]
+    if declared:
+        stats["variation_types"] = dict(collections.Counter(declared))
+        varied = sum(1 for v in declared if v != "same_sense")
+        stats["variation_share"] = round(varied / len(items), 2)
     if positions:
         top_pos, top_count = positions.most_common(1)[0]
         share = top_count / len(items)
@@ -1145,7 +1174,10 @@ def compare_reports(paths: list[str]) -> str:
             f"{summary.get('warnings', 0)} | {summary.get('infos', 0)} |"
         )
 
-    metrics = ["strategy_coverage", "longest_option_is_answer", "answer_position_top_share", "alternatives_avg"]
+    metrics = [
+        "strategy_coverage", "variation_share", "longest_option_is_answer",
+        "answer_position_top_share", "alternatives_avg",
+    ]
     lines += ["", "## Estatísticas", "", "| Métrica | " + " | ".join(run_label(r, p) for p, r in reports) + " |",
               "|---" * (len(reports) + 1) + "|"]
     for metric in metrics:

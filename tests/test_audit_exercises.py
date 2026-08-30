@@ -17,6 +17,7 @@ from scripts.audit_exercises import (
     load_cards,
     INFO,
     WARN,
+    aggregate_quiz,
     analyze,
     describe_error,
     check_batch,
@@ -35,6 +36,7 @@ def quiz(**overrides):
         "quiz_type": "discrimination",
         "concept": "settle into vs settle for",
         "source_expression": "settle into",
+        "variation_type": "different_particle",
         "question": "After the move, it took her weeks to _____ her new routine.",
         "options": ["settle into", "settle for", "settle on", "settle down"],
         "answer_index": 0,
@@ -676,3 +678,64 @@ def test_imperative_with_a_contraction_target_is_still_allowed():
     )
 
     assert "person_mismatch" not in checks(findings)
+
+
+# --- item 8: a rotacao das estrategias dilui a premissa -----------------------
+
+
+def test_polysemy_declaring_the_same_sense_is_a_contradiction():
+    """`polysemy` e `discrimination` existem para apresentar sentido diferente.
+    Declarar `same_sense` neles e o modelo se contradizendo, e e a unica forma
+    visivel de detectar o "flashcard disfarcado" que a decisao 0002 combate.
+    """
+    findings = check_quiz_item(
+        quiz(quiz_type="polysemy", variation_type="same_sense"), "quiz", 1, 1
+    )
+
+    assert "variation_contradicts_type" in checks(findings, ERROR)
+
+
+def test_production_declaring_the_same_sense_is_legitimate():
+    """`production` e `interference` testam o sentido ja conhecido por desenho.
+    Declarar `same_sense` neles e honestidade, nao defeito - o item 8 e sobre a
+    rotacao diluir a premissa, e punir a declaracao honesta ensinaria o modelo a
+    mentir.
+    """
+    findings = check_quiz_item(
+        quiz(quiz_type="production", variation_type="same_sense"), "quiz", 1, 1
+    )
+
+    assert "variation_contradicts_type" not in checks(findings)
+
+
+def test_quiz_without_variation_type_is_flagged_but_not_dropped():
+    findings = check_quiz_item(quiz(variation_type=""), "quiz", 1, 1)
+
+    assert "empty_variation_type" in checks(findings, WARN)
+    assert "empty_variation_type" not in checks(findings, ERROR)
+
+
+def test_variation_share_measures_how_much_of_the_session_is_n_plus_one():
+    """A premissa n+1 virando numero: a fracao da sessao que apresenta variacao
+    em vez de reapresentar o sentido que o card ja ensina.
+    """
+    items = [
+        quiz(variation_type="same_sense"),
+        quiz(variation_type="other_sense"),
+        quiz(variation_type="derived_form"),
+        quiz(variation_type="same_sense"),
+    ]
+
+    stats, _ = aggregate_quiz(items)
+
+    assert stats["variation_share"] == 0.5
+    assert stats["variation_types"]["same_sense"] == 2
+
+
+def test_variation_share_is_absent_when_nobody_declared():
+    """Modelo que nao emite o campo nao pode virar 'variacao zero' - isso seria
+    inventar medicao a partir de ausencia de dado.
+    """
+    stats, _ = aggregate_quiz([quiz(variation_type=""), quiz(variation_type="")])
+
+    assert "variation_share" not in stats
