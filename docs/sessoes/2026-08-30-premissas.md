@@ -1,5 +1,7 @@
 # Sessão de 2026-08-30 — extração das premissas
 
+**Tipo: registro — migrado.** O conteúdo durável está em `premissas.md`, nos ADRs `0005`–`0013` e em `historico/README.md`. Mantido pela narrativa da descoberta do termo "n+1"; não é referência ativa.
+
 Registro do que foi extraído, decidido e descoberto. A sessão foi de perguntas
 (`/grill-me`), não de código: nenhuma linha de `src/` mudou.
 

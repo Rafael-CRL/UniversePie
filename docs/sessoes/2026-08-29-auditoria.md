@@ -1,5 +1,7 @@
 # Sessão de 2026-08-29 — auditoria de qualidade
 
+**Tipo: evidência.** Contém a linha de base de medição do projeto — os números não são regeneráveis sem gastar cota. Permanente.
+
 Registro factual do que foi construído, medido e concluído. Escrito para quem
 retomar o trabalho sem ter participado da sessão.
 

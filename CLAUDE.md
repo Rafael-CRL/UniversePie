@@ -13,7 +13,7 @@ input. Isso é a premissa "n+1", e ela governa o resto.
 | tocar em prompt ou geração de conteúdo | `docs/ai-rules.md` |
 | mexer em endpoint, fluxo ou contrato | `docs/arquitetura.md` |
 | discordar de algo que parece arbitrário | `docs/decisoes/` — provavelmente já foi decidido, com o motivo |
-| mexer nos prompts ou na auditoria | `docs/sessoes/2026-08-29-auditoria.md` — o que já foi medido, concluído e descartado, com os números |
+| mexer nos prompts ou na auditoria | `docs/sessoes/` — o README aponta a linha de base vigente e o que cada registro ainda sustenta |
 
 `docs/historico/` é o planejamento original, **congelado**. Não é referência ativa
 e contém instruções contrárias às decisões atuais.
